@@ -2,8 +2,11 @@ import {
   ActionType,
   RiskLevel,
   createCommand,
+  createPlan,
   createPermissionPolicy,
-  createPivotRuntime
+  createPivotRuntime,
+  getExecutionOrder,
+  validatePlan
 } from '@kupola/pivot';
 
 const runtime = createPivotRuntime({
@@ -87,6 +90,22 @@ if (blockedResult.ok || blockedResult.audit.status !== 'blocked') {
 
 if (blockedPreview.ok) {
   throw new Error('Expected preview to show unauthorized command as blocked.');
+}
+
+const plan = createPlan({
+  intent: 'Create a HIS organization branch.',
+  nodes: [
+    { id: 'validate-parent', capability: 'organization.query' },
+    { id: 'create-branch', capability: 'organization.create' }
+  ],
+  edges: [{ from: 'validate-parent', to: 'create-branch' }]
+});
+
+const planValidation = validatePlan(plan);
+const order = getExecutionOrder(plan);
+
+if (!planValidation.valid || order.map((node) => node.id).join(',') !== 'validate-parent,create-branch') {
+  throw new Error('Expected plan validation and execution order to succeed.');
 }
 
 console.log('PIVOT smoke test passed.');

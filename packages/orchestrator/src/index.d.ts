@@ -21,6 +21,14 @@ export interface PivotPlan {
   metadata: Record<string, unknown>;
 }
 
+export interface PivotPlanValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
 export function createPlan(input?: Partial<PivotPlan>): PivotPlan;
 export function addNode(plan: PivotPlan, node: PivotPlanNode): PivotPlan;
 export function addEdge(plan: PivotPlan, edge: PivotPlanEdge): PivotPlan;
+export function validatePlan(plan: unknown): PivotPlanValidationResult;
+export function getExecutionOrder(plan: PivotPlan): PivotPlanNode[];

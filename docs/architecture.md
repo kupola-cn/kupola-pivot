@@ -68,3 +68,14 @@ PIVOT supports two levels:
 - Intent Flow: multiple related nodes, such as creating a branch under a group, assigning roles, creating menus, and notifying owners.
 
 For complex business orchestration, PIVOT should support a node workflow model, but it should stay optional. Developers can start with linear steps and adopt graph workflows only when business dependencies require them.
+
+## Plan Validation
+
+The orchestrator package provides basic graph validation:
+
+- duplicate node detection
+- edge reference checks
+- cycle detection
+- execution order derivation for directed acyclic plans
+
+This keeps early workflow modeling practical without forcing a visual workflow editor too early.

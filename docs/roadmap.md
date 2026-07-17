@@ -28,6 +28,13 @@
 - Return capability, policy result, warnings, and confirmation requirement before execution.
 - Support UI drawers/modals that explain what will happen before calling project APIs.
 
+## 0.1.4 Orchestrator Validation
+
+- Add stable plan IDs.
+- Add `validatePlan(plan)`.
+- Add `getExecutionOrder(plan)`.
+- Detect duplicate nodes, invalid edges, and cycles.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.
