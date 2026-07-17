@@ -40,6 +40,31 @@ runtime.registerCapability({
   execute: async ({ params }) => ({ id: 'org-1', ...params })
 });
 
+runtime.registerCapability({
+  name: 'organization.delete',
+  resource: 'organization',
+  action: ActionType.DELETE,
+  risk: RiskLevel.HIGH,
+  permissions: ['organization:delete'],
+  paramsSchema: {
+    id: { type: 'string', required: true }
+  },
+  requiresConfirmation: true,
+  execute: async ({ params }) => ({ id: params.id, deleted: true })
+});
+
+runtime.registerCapability({
+  name: 'organization.fail',
+  resource: 'organization',
+  action: ActionType.EXECUTE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => {
+    throw new Error('Intentional plan failure.');
+  }
+});
+
 const command = createCommand({
   intent: 'Create Branch C under the group.',
   resource: 'organization',
@@ -124,12 +149,44 @@ const planResult = await runtime.executePlan(plan, {
   }
 });
 
+const failingPlan = createPlan({
+  intent: 'Create a branch and compensate on failure.',
+  nodes: [
+    {
+      id: 'create-branch-with-compensation',
+      capability: 'organization.create',
+      params: { name: 'Branch F', parentId: 'group' },
+      compensate: {
+        capability: 'organization.delete',
+        params: { id: 'org-1' }
+      }
+    },
+    { id: 'fail-after-create', capability: 'organization.fail' }
+  ],
+  edges: [{ from: 'create-branch-with-compensation', to: 'fail-after-create' }]
+});
+
+const failingPlanResult = await runtime.executePlan(failingPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create', 'organization:delete']
+  }
+});
+
 if (!planValidation.valid || order.map((node) => node.id).join(',') !== 'validate-parent,create-branch') {
   throw new Error('Expected plan validation and execution order to succeed.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {
   throw new Error('Expected plan execution to run both nodes.');
+}
+
+if (failingPlanResult.ok || failingPlanResult.data.compensations.length !== 1) {
+  throw new Error('Expected failed plan to run one compensation.');
+}
+
+if (!failingPlanResult.data.compensations[0].result.ok) {
+  throw new Error('Expected plan compensation to succeed.');
 }
 
 console.log('PIVOT smoke test passed.');

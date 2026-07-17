@@ -42,6 +42,13 @@
 - Return per-node command/result records.
 - Stop on first failure by default, with optional continue-on-error behavior.
 
+## 0.1.6 Compensation
+
+- Add node-level `compensate` capability descriptors.
+- Run successful node compensations in reverse order after a later node fails.
+- Return compensation records in plan results.
+- Keep compensation inside the same validation, policy, confirmation, execution, and audit pipeline.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

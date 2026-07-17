@@ -85,3 +85,9 @@ This keeps early workflow modeling practical without forcing a visual workflow e
 `executePlan(plan, context)` runs a validated directed acyclic plan in dependency order. Each node resolves a registered capability and is executed through the same command pipeline as `executeCommand`, including validation, policy checks, confirmation, execution, result wrapping, and audit events.
 
 The default behavior stops on the first failed node. Apps can pass `{ stopOnError: false }` to continue and collect all node results.
+
+## Compensation
+
+Plan nodes can define a `compensate` capability. When a later node fails and `compensateOnError` is enabled, PIVOT runs compensation commands for previously successful nodes in reverse execution order.
+
+Compensation is not a database transaction. It is a business-level recovery hook. Each compensation command still goes through validation, policy checks, confirmation, execution, result wrapping, and audit events.

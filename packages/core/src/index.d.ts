@@ -45,9 +45,15 @@ export interface PivotRuntime {
   executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<TData>>;
   executePlan(plan: PivotPlan, context?: PivotExecutionContext, options?: {
     stopOnError?: boolean;
+    compensateOnError?: boolean;
   }): Promise<PivotResult<{
     plan: PivotPlan;
     nodes: Array<{
+      node: PivotPlanNode;
+      command: PivotCommand | null;
+      result: PivotResult;
+    }>;
+    compensations: Array<{
       node: PivotPlanNode;
       command: PivotCommand | null;
       result: PivotResult;

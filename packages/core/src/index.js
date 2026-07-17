@@ -223,6 +223,7 @@ export function createPivotRuntime(options = {}) {
     }
 
     const stopOnError = options.stopOnError ?? true;
+    const compensateOnError = options.compensateOnError ?? true;
     const orderedNodes = getExecutionOrder(plan);
     const nodeResults = [];
     const resultsByNodeId = {};
@@ -241,7 +242,11 @@ export function createPivotRuntime(options = {}) {
         resultsByNodeId[node.id] = result;
 
         if (stopOnError) {
-          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.');
+          const compensations = compensateOnError
+            ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
+            : [];
+
+          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations);
         }
 
         continue;
@@ -272,12 +277,84 @@ export function createPivotRuntime(options = {}) {
       resultsByNodeId[node.id] = result;
 
       if (!result.ok && stopOnError) {
-        return createPlanResult(plan, nodeResults, false, 'Plan execution failed.');
+        const compensations = compensateOnError
+          ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
+          : [];
+
+        return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations);
       }
     }
 
     const ok = nodeResults.every((item) => item.result.ok);
     return createPlanResult(plan, nodeResults, ok, ok ? 'Plan executed.' : 'Plan completed with failures.');
+  };
+
+  const compensatePlan = async ({ plan, nodeResults, context, resultsByNodeId, failedNode }) => {
+    const compensations = [];
+    const successfulNodes = nodeResults.filter((item) => item.result.ok).reverse();
+
+    for (const item of successfulNodes) {
+      const compensation = item.node.compensate;
+
+      if (!compensation) {
+        compensations.push({
+          node: item.node,
+          command: null,
+          result: createResult({
+            ok: true,
+            message: 'No compensation configured.',
+            data: { skipped: true }
+          })
+        });
+        continue;
+      }
+
+      const capabilityName = compensation.capability ?? item.node.compensateCapability;
+      const capability = registry.get(capabilityName);
+
+      if (!capability) {
+        compensations.push({
+          node: item.node,
+          command: null,
+          result: createResult({
+            ok: false,
+            message: `Compensation capability is not registered: ${String(capabilityName)}`,
+            explain: { capability: capabilityName }
+          })
+        });
+        continue;
+      }
+
+      const command = compensation.command ?? createCommand({
+        intent: compensation.intent ?? `Compensate ${item.node.id}`,
+        resource: capability.resource,
+        action: capability.action,
+        capability: capability.name,
+        risk: compensation.risk ?? capability.risk,
+        params: compensation.params ?? {},
+        metadata: {
+          ...(compensation.metadata ?? {}),
+          planId: plan.id,
+          nodeId: item.node.id,
+          failedNodeId: failedNode?.id,
+          compensation: true
+        }
+      });
+
+      const result = await executeCommand(command, {
+        ...context,
+        plan,
+        node: item.node,
+        failedNode,
+        compensatedNodeResult: item.result,
+        planResults: resultsByNodeId,
+        compensating: true
+      });
+
+      compensations.push({ node: item.node, command, result });
+    }
+
+    return compensations;
   };
 
   return {
@@ -327,18 +404,21 @@ function toCapabilityPreview(capability) {
   return preview;
 }
 
-function createPlanResult(plan, nodeResults, ok, message) {
+function createPlanResult(plan, nodeResults, ok, message, compensations = []) {
   return createResult({
     ok,
     message,
     data: {
       plan,
       nodes: nodeResults,
+      compensations,
       status: ok ? 'executed' : 'failed'
     },
     explain: {
       executedNodes: nodeResults.length,
-      failedNodes: nodeResults.filter((item) => !item.result.ok).length
+      failedNodes: nodeResults.filter((item) => !item.result.ok).length,
+      compensationNodes: compensations.length,
+      failedCompensations: compensations.filter((item) => !item.result.ok).length
     }
   });
 }

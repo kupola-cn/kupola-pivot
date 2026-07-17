@@ -2,7 +2,19 @@ export interface PivotPlanNode {
   id: string;
   type?: string;
   capability?: string;
+  command?: unknown;
   params?: Record<string, unknown>;
+  risk?: string;
+  intent?: string;
+  compensate?: {
+    capability?: string;
+    command?: unknown;
+    intent?: string;
+    risk?: string;
+    params?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
+  };
+  compensateCapability?: string;
   metadata?: Record<string, unknown>;
 }
 

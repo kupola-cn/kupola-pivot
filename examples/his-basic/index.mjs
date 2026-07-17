@@ -25,7 +25,7 @@ registerHisCapabilities(runtime);
 const adminContext = {
   actor: {
     id: 'admin',
-    permissions: ['role:query', 'organization:create', 'role:delete']
+    permissions: ['role:query', 'organization:create', 'organization:delete', 'role:delete']
   },
   api
 };
@@ -87,10 +87,32 @@ const createBranchPlan = createPlan({
   edges: [{ from: 'query-group', to: 'create-branch-d' }]
 });
 
+const compensatedPlan = createPlan({
+  intent: '创建分机构E后触发失败并回滚',
+  nodes: [
+    {
+      id: 'create-branch-e',
+      capability: 'organization.create',
+      params: { name: '分机构E', parentId: 'group' },
+      compensate: {
+        capability: 'organization.deleteLatest',
+        params: {}
+      }
+    },
+    {
+      id: 'fail-after-branch-e',
+      capability: 'organization.fail',
+      params: {}
+    }
+  ],
+  edges: [{ from: 'create-branch-e', to: 'fail-after-branch-e' }]
+});
+
 console.log('query roles:', await runtime.executeCommand(queryRoles, adminContext));
 console.log('create branch preview:', await runtime.previewCommand(createBranch, adminContext));
 console.log('create branch:', await runtime.executeCommand(createBranch, adminContext));
 console.log('create branch plan:', await runtime.executePlan(createBranchPlan, adminContext));
+console.log('compensated plan:', await runtime.executePlan(compensatedPlan, adminContext));
 console.log('blocked delete:', await runtime.executeCommand(deleteRole, limitedContext));
 console.log('backend 403:', await runtime.executeCommand(deleteRole, adminContext));
 console.log('audit count:', runtime.getAuditEvents().length);
@@ -130,6 +152,29 @@ function registerHisCapabilities(targetRuntime) {
       parentId: { type: 'string', required: true }
     },
     execute: async ({ params, context }) => context.api.createOrganization(params)
+  });
+
+  targetRuntime.registerCapability({
+    name: 'organization.deleteLatest',
+    resource: 'organization',
+    action: ActionType.DELETE,
+    risk: RiskLevel.HIGH,
+    permissions: ['organization:delete'],
+    requiresConfirmation: true,
+    paramsSchema: {},
+    execute: async ({ context }) => context.api.deleteLatestOrganization()
+  });
+
+  targetRuntime.registerCapability({
+    name: 'organization.fail',
+    resource: 'organization',
+    action: ActionType.EXECUTE,
+    risk: RiskLevel.LOW,
+    permissions: ['organization:create'],
+    paramsSchema: {},
+    execute: async () => {
+      throw new Error('Simulated downstream HIS API failure.');
+    }
   });
 
   targetRuntime.registerCapability({
@@ -190,6 +235,17 @@ function createHisApi() {
 
     async queryOrganization(id) {
       return organizations.find((item) => item.id === id) ?? null;
+    },
+
+    async deleteLatestOrganization() {
+      const organization = organizations.at(-1);
+
+      if (!organization || organization.id === 'group') {
+        return { deleted: false };
+      }
+
+      organizations.pop();
+      return { id: organization.id, deleted: true };
     },
 
     async deleteRole(id) {

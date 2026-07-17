@@ -145,3 +145,23 @@ const result = await runtime.executePlan(plan, context);
 ```
 
 Each node is converted into a command and executed through the same validation, policy, confirmation, execution, and audit path as `executeCommand`.
+
+Nodes can also define compensation:
+
+```js
+const plan = createPlan({
+  nodes: [
+    {
+      id: 'create-organization',
+      capability: 'organization.create',
+      params: { name: 'Branch C', parentId: 'group' },
+      compensate: {
+        capability: 'organization.delete',
+        params: { id: 'created-organization-id' }
+      }
+    }
+  ]
+});
+```
+
+When a later node fails, PIVOT runs configured compensations in reverse order for successful nodes.
