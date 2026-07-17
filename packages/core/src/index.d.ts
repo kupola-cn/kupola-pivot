@@ -12,7 +12,7 @@ import type {
   ValidationResult
 } from '@kupola/pivot-protocol';
 import type { PivotPolicy } from '@kupola/pivot-policy';
-import type { PivotPlan, PivotPlanNode } from '@kupola/pivot-orchestrator';
+import type { PivotPlan, PivotPlanNode, PivotPlanValidationOptions } from '@kupola/pivot-orchestrator';
 import type { TrustedUIAdapter } from '@kupola/pivot-ui';
 
 export interface CapabilityRegistry {
@@ -91,6 +91,7 @@ export function createPivotRuntime(options?: {
   capabilityRegistry?: { onDuplicate?: 'replace' | 'error' };
   policies?: PivotPolicy[];
   policyPipeline?: { evaluate(input: unknown): Promise<unknown> };
+  planLimits?: PivotPlanValidationOptions;
   ui?: Partial<TrustedUIAdapter>;
   onAudit?: (event: PivotAuditEvent) => void;
 }): PivotRuntime;

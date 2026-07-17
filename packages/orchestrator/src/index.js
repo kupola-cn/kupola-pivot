@@ -22,7 +22,7 @@ export function addEdge(plan, edge) {
   };
 }
 
-export function validatePlan(plan) {
+export function validatePlan(plan, options = {}) {
   const errors = [];
   const warnings = [];
 
@@ -44,6 +44,17 @@ export function validatePlan(plan) {
 
   if (errors.length > 0) {
     return { valid: false, errors, warnings };
+  }
+
+  const maxNodes = normalizeLimit(options.maxNodes);
+  const maxEdges = normalizeLimit(options.maxEdges);
+
+  if (maxNodes !== null && plan.nodes.length > maxNodes) {
+    errors.push(`Plan node count exceeds limit: ${plan.nodes.length}/${maxNodes}`);
+  }
+
+  if (maxEdges !== null && plan.edges.length > maxEdges) {
+    errors.push(`Plan edge count exceeds limit: ${plan.edges.length}/${maxEdges}`);
   }
 
   const nodeIds = new Set();
@@ -164,4 +175,8 @@ function createId(prefix) {
 
 function isPlainObject(value) {
   return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function normalizeLimit(limit) {
+  return Number.isInteger(limit) && limit >= 0 ? limit : null;
 }

@@ -39,8 +39,13 @@ export interface PivotPlanValidationResult {
   warnings: string[];
 }
 
+export interface PivotPlanValidationOptions {
+  maxNodes?: number;
+  maxEdges?: number;
+}
+
 export function createPlan(input?: Partial<PivotPlan>): PivotPlan;
 export function addNode(plan: PivotPlan, node: PivotPlanNode): PivotPlan;
 export function addEdge(plan: PivotPlan, edge: PivotPlanEdge): PivotPlan;
-export function validatePlan(plan: unknown): PivotPlanValidationResult;
+export function validatePlan(plan: unknown, options?: PivotPlanValidationOptions): PivotPlanValidationResult;
 export function getExecutionOrder(plan: PivotPlan): PivotPlanNode[];

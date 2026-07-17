@@ -203,6 +203,17 @@ const preview = await runtime.previewPlan(plan, context);
 
 `previewPlan` validates the plan and previews every node through the same command validation and policy pipeline used by execution. It does not call capability `execute` functions.
 
+Runtime plan preview and execution are also checked against `planLimits`:
+
+```js
+const runtime = createPivotRuntime({
+  planLimits: {
+    maxNodes: 50,
+    maxEdges: 100
+  }
+});
+```
+
 ```js
 const result = await runtime.executePlan(plan, context);
 ```

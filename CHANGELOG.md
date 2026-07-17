@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.6 - Plan Size Limits
+
+### Added
+
+- Optional `maxNodes` and `maxEdges` limits for `validatePlan`.
+- Runtime `planLimits` option with default limits before plan preview and execution.
+
 ## 0.2.5 - Immutable Capability Registry
 
 ### Changed

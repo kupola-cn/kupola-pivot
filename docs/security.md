@@ -79,6 +79,15 @@ The PIVOT runtime should execute commands only after:
 
 If any step fails, execution returns a failed result and writes an audit event. PIVOT should not silently fall back to direct API calls or AI-generated URLs.
 
+## Plan Size Limits
+
+AI-generated plans are bounded by runtime limits before preview or execution. The default runtime limits are:
+
+- `maxNodes: 100`
+- `maxEdges: 200`
+
+Projects can tune these limits with `createPivotRuntime({ planLimits })`. These limits are frontend stability and safety guardrails; backend APIs still need independent rate limits and authorization.
+
 ## Immutable Capabilities
 
 Registered capabilities are deep-cloned and deeply frozen by the registry. This prevents later mutations to the original input object, returned capability object, nested `paramsSchema`, `permissions`, or metadata from changing the runtime security boundary.

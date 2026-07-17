@@ -40,6 +40,7 @@ export function createPivotRuntime(options = {}) {
   const registry = options.registry ?? createCapabilityRegistry(options.capabilityRegistry);
   const policyPipeline = options.policyPipeline ?? createPolicyPipeline(options.policies);
   const ui = options.ui ?? createTrustedUIAdapter();
+  const planLimits = normalizePlanLimits(options.planLimits);
   const auditEvents = [];
 
   const emitAudit = (eventInput) => {
@@ -269,7 +270,7 @@ export function createPivotRuntime(options = {}) {
 
   const previewPlan = async (plan, context = {}) => {
     const timeline = [];
-    const validation = validatePlan(plan);
+    const validation = validatePlan(plan, planLimits);
 
     if (!validation.valid) {
       timeline.push(createTimelineStep('plan.validation', 'failed', 'Plan validation failed.', validation));
@@ -366,7 +367,7 @@ export function createPivotRuntime(options = {}) {
 
   const executePlan = async (plan, context = {}, options = {}) => {
     const timeline = [];
-    const validation = validatePlan(plan);
+    const validation = validatePlan(plan, planLimits);
 
     if (!validation.valid) {
       timeline.push(createTimelineStep('plan.validation', 'failed', 'Plan validation failed.', validation));
@@ -654,6 +655,17 @@ function getErrorStatus(error) {
   const status = error?.status ?? error?.statusCode ?? error?.response?.status;
   const numericStatus = typeof status === 'string' ? Number.parseInt(status, 10) : status;
   return Number.isInteger(numericStatus) ? numericStatus : null;
+}
+
+function normalizePlanLimits(planLimits = {}) {
+  return {
+    maxNodes: normalizeLimit(planLimits.maxNodes, 100),
+    maxEdges: normalizeLimit(planLimits.maxEdges, 200)
+  };
+}
+
+function normalizeLimit(value, fallback) {
+  return Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
 function createPlanResult(plan, nodeResults, ok, message, compensations = [], timeline = []) {

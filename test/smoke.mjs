@@ -394,6 +394,7 @@ const plan = createPlan({
 });
 
 const planValidation = validatePlan(plan);
+const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const order = getExecutionOrder(plan);
 const planPreview = await runtime.previewPlan(plan, {
   actor: {
@@ -413,6 +414,12 @@ const planResult = await runtime.executePlan(plan, {
     permissions: ['organization:query', 'organization:create']
   }
 });
+
+const limitedRuntime = createPivotRuntime({
+  planLimits: { maxNodes: 1, maxEdges: 1 }
+});
+const oversizedPreview = await limitedRuntime.previewPlan(plan);
+const oversizedExecution = await limitedRuntime.executePlan(plan);
 
 const failingPlan = createPlan({
   intent: 'Create a branch and compensate on failure.',
@@ -442,6 +449,10 @@ if (!planValidation.valid || order.map((node) => node.id).join(',') !== 'validat
   throw new Error('Expected plan validation and execution order to succeed.');
 }
 
+if (limitedPlanValidation.valid || !limitedPlanValidation.errors.some((error) => error.includes('node count exceeds limit'))) {
+  throw new Error('Expected plan validation limits to reject oversized plans.');
+}
+
 if (!planPreview.ok || !planPreview.data.requiresConfirmation || planPreview.data.status !== 'ready') {
   throw new Error('Expected plan preview to be ready and require confirmation.');
 }
@@ -452,6 +463,14 @@ if (!Array.isArray(planPreview.explain.timeline) || !planPreview.explain.timelin
 
 if (blockedPlanPreview.ok || blockedPlanPreview.data.status !== 'blocked') {
   throw new Error('Expected unauthorized plan preview to be blocked.');
+}
+
+if (oversizedPreview.ok || oversizedPreview.data.status !== 'blocked') {
+  throw new Error('Expected runtime plan preview to block oversized plans.');
+}
+
+if (oversizedExecution.ok || oversizedExecution.data.nodes.length !== 0) {
+  throw new Error('Expected runtime plan execution to reject oversized plans before nodes run.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {
