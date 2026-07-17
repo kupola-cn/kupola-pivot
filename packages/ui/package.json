@@ -1,6 +1,6 @@
 {
   "name": "@kupola/pivot-ui",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Kupola-based trusted UI adapter contracts for PIVOT.",
   "type": "module",
   "main": "src/index.js",
@@ -10,8 +10,13 @@
     ".": {
       "import": "./src/index.js",
       "types": "./src/index.d.ts"
-    }
+    },
+    "./css": "./src/pivot.css"
   },
+  "sideEffects": [
+    "*.css",
+    "src/*.css"
+  ],
   "files": [
     "src/"
   ],

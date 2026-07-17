@@ -1,0 +1,159 @@
+:root {
+  --pivot-color-bg: #ffffff;
+  --pivot-color-surface: #f8fafc;
+  --pivot-color-border: #d8dee8;
+  --pivot-color-text: #111827;
+  --pivot-color-muted: #667085;
+  --pivot-color-success: #138a43;
+  --pivot-color-success-bg: #e8f6ee;
+  --pivot-color-danger: #c83232;
+  --pivot-color-danger-bg: #fdecec;
+  --pivot-color-warning: #b76e00;
+  --pivot-color-warning-bg: #fff4db;
+  --pivot-color-info: #2563eb;
+  --pivot-radius: 8px;
+  --pivot-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.pivot-result {
+  color: var(--pivot-color-text);
+  background: var(--pivot-color-bg);
+  border: 1px solid var(--pivot-color-border);
+  border-radius: var(--pivot-radius);
+  font-family: var(--pivot-font);
+  padding: 12px;
+}
+
+.pivot-result__header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pivot-result__status {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.pivot-result__message {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.pivot-result--success .pivot-result__status {
+  background: var(--pivot-color-success-bg);
+  color: var(--pivot-color-success);
+}
+
+.pivot-result--failed .pivot-result__status {
+  background: var(--pivot-color-danger-bg);
+  color: var(--pivot-color-danger);
+}
+
+.pivot-timeline,
+.pivot-result__timeline {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pivot-timeline__item {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 12px minmax(0, 1fr);
+}
+
+.pivot-timeline__marker {
+  background: var(--pivot-color-info);
+  border-radius: 50%;
+  height: 8px;
+  margin-top: 6px;
+  width: 8px;
+}
+
+.pivot-timeline__content {
+  background: var(--pivot-color-surface);
+  border: 1px solid var(--pivot-color-border);
+  border-radius: var(--pivot-radius);
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.pivot-timeline__header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.pivot-timeline__stage {
+  color: var(--pivot-color-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pivot-timeline__status {
+  color: var(--pivot-color-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.pivot-timeline__message {
+  color: var(--pivot-color-text);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.pivot-timeline__time {
+  color: var(--pivot-color-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.pivot-timeline__item--executed .pivot-timeline__marker,
+.pivot-timeline__item--passed .pivot-timeline__marker,
+.pivot-timeline__item--success .pivot-timeline__marker {
+  background: var(--pivot-color-success);
+}
+
+.pivot-timeline__item--failed .pivot-timeline__marker,
+.pivot-timeline__item--blocked .pivot-timeline__marker,
+.pivot-timeline__item--rejected .pivot-timeline__marker {
+  background: var(--pivot-color-danger);
+}
+
+.pivot-timeline__item--required .pivot-timeline__marker,
+.pivot-timeline__item--confirm .pivot-timeline__marker {
+  background: var(--pivot-color-warning);
+}
+
+.pivot-timeline--empty {
+  color: var(--pivot-color-muted);
+  font-family: var(--pivot-font);
+  font-size: 13px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pivot-color-bg: #111827;
+    --pivot-color-surface: #1f2937;
+    --pivot-color-border: #374151;
+    --pivot-color-text: #f9fafb;
+    --pivot-color-muted: #aeb8c7;
+    --pivot-color-success-bg: #123523;
+    --pivot-color-danger-bg: #3b1717;
+    --pivot-color-warning-bg: #3b2b0b;
+  }
+}

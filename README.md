@@ -151,6 +151,12 @@ Every command and plan result can include `explain.timeline`, a UI-ready list of
 const html = renderResultToHTML(result);
 ```
 
+Optional default styles are available:
+
+```js
+import '@kupola/pivot/css';
+```
+
 PIVOT validates the command, checks the registered capability, evaluates policies, requests confirmation when needed, executes the host-project function, and records an audit event.
 
 See:

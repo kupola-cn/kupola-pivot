@@ -63,6 +63,13 @@
 - Add `mountResult`.
 - Escape rendered content by default.
 
+## 0.1.9 Default UI CSS
+
+- Add default result and timeline CSS.
+- Export CSS from `@kupola/pivot/css`.
+- Export CSS from `@kupola/pivot-ui/css`.
+- Keep styles configurable through CSS variables and class overrides.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

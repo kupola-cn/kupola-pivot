@@ -10,6 +10,7 @@ import {
   renderTimelineToHTML,
   validatePlan
 } from '@kupola/pivot';
+import { readFileSync } from 'node:fs';
 
 const runtime = createPivotRuntime({
   policies: [createPermissionPolicy()],
@@ -218,6 +219,12 @@ const escapedHTML = renderTimelineToHTML([{ stage: '<script>', status: 'failed',
 
 if (escapedHTML.includes('<script>') || escapedHTML.includes('<img')) {
   throw new Error('Expected UI renderer to escape HTML content.');
+}
+
+const css = readFileSync(new URL('../packages/ui/src/pivot.css', import.meta.url), 'utf8');
+
+if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline')) {
+  throw new Error('Expected default PIVOT UI CSS to include result and timeline styles.');
 }
 
 console.log('PIVOT smoke test passed.');
