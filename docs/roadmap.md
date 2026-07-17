@@ -9,11 +9,13 @@
 - Implement capability registry, command validation, execution result wrapping, and audit events.
 - Keep `dgc/` as design notes and decision history.
 
-## 0.2 Developer Preview
+## 0.2.0 Developer Preview
 
 - Implement policy middleware pipeline.
 - Implement result preview and confirmation hooks.
 - Add HIS-style example for query, create, update, delete, and organization hierarchy operations.
+- Document migration path from Kupola 2.x and `@kupola/ai-adapter`.
+- Publish a consolidated Developer Preview changelog.
 
 ## 0.1.1 Package Hardening
 

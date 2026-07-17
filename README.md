@@ -50,7 +50,7 @@ examples/             Future examples, including HIS-style business apps
 
 ## Current Stage
 
-This repository is in early architecture and foundation work. The first milestone is to define stable contracts before implementing production behavior.
+PIVOT is currently in Developer Preview. The core API is usable for experiments, examples, and early project integration, but it is not yet a production-stable 1.0 contract.
 
 ## Install
 
@@ -164,5 +164,8 @@ See:
 - [Architecture](docs/architecture.md)
 - [Capability Registry](docs/capabilities.md)
 - [Security Model](docs/security.md)
+- [Migration Notes](docs/migration.md)
 - [Roadmap](docs/roadmap.md)
+- [Examples](examples/README.md)
+- [Changelog](CHANGELOG.md)
 - [Design Notes](dgc/AI_NATIVE_WEB_APP_TODO.md)
