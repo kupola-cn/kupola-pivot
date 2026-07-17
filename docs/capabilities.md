@@ -76,6 +76,8 @@ This mechanism gives PIVOT a hard boundary:
 
 Frontend checks improve interaction and explainability, but backend APIs remain the real security boundary.
 
+Registered capabilities are immutable snapshots. The registry deep-clones and deeply freezes capability definitions so later mutations to the original input object cannot change params, permissions, risk, or metadata.
+
 ## Execution Flow
 
 `executeCommand` follows this order:

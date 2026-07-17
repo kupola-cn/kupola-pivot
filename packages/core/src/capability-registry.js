@@ -22,7 +22,7 @@ export function createCapabilityRegistry(options = {}) {
         throw new Error(`PIVOT capability already registered: ${capability.name}`);
       }
 
-      capabilities.set(capability.name, Object.freeze({ ...capability }));
+      capabilities.set(capability.name, freezeCapability(capability));
       return capabilities.get(capability.name);
     },
 
@@ -70,4 +70,40 @@ export function createCapabilityRegistry(options = {}) {
       return capabilities.size;
     }
   };
+}
+
+function freezeCapability(capability) {
+  return deepFreeze(cloneValue(capability));
+}
+
+function cloneValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneValue(item));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, cloneValue(entryValue)])
+    );
+  }
+
+  return value;
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value;
+  }
+
+  Object.freeze(value);
+
+  for (const child of Object.values(value)) {
+    deepFreeze(child);
+  }
+
+  return value;
+}
+
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === '[object Object]';
 }

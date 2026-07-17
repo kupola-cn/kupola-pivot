@@ -1,6 +1,6 @@
 {
   "name": "@kupola/pivot-orchestrator",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Workflow and execution planning primitives for Kupola PIVOT.",
   "type": "module",
   "main": "src/index.js",

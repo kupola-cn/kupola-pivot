@@ -79,6 +79,12 @@ The PIVOT runtime should execute commands only after:
 
 If any step fails, execution returns a failed result and writes an audit event. PIVOT should not silently fall back to direct API calls or AI-generated URLs.
 
+## Immutable Capabilities
+
+Registered capabilities are deep-cloned and deeply frozen by the registry. This prevents later mutations to the original input object, returned capability object, nested `paramsSchema`, `permissions`, or metadata from changing the runtime security boundary.
+
+Project code should update a capability by re-registering it intentionally, not by mutating a previously returned object.
+
 ## Sensitive Params
 
 Capability schemas can mark params as sensitive:

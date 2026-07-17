@@ -2,6 +2,7 @@ import {
   ActionType,
   RiskLevel,
   createCommand,
+  createCapabilityRegistry,
   createPlan,
   createPermissionPolicy,
   createPivotRuntime,
@@ -25,6 +26,47 @@ const runtime = createPivotRuntime({
     }
   }
 });
+
+const isolatedRegistry = createCapabilityRegistry();
+const mutableCapabilityInput = {
+  name: 'user.immutable.create',
+  resource: 'user',
+  action: ActionType.CREATE,
+  risk: RiskLevel.MEDIUM,
+  permissions: ['user:create'],
+  paramsSchema: {
+    username: { type: 'string', required: true }
+  },
+  execute: async () => ({ ok: true })
+};
+const immutableCapability = isolatedRegistry.register(mutableCapabilityInput);
+
+mutableCapabilityInput.permissions.push('user:admin');
+mutableCapabilityInput.paramsSchema.username.required = false;
+
+if (immutableCapability.permissions.includes('user:admin')) {
+  throw new Error('Expected registered capability permissions to be detached from source input.');
+}
+
+if (!immutableCapability.paramsSchema.username.required) {
+  throw new Error('Expected registered capability paramsSchema to be detached from source input.');
+}
+
+let mutationBlocked = false;
+
+try {
+  immutableCapability.paramsSchema.username.required = false;
+} catch {
+  mutationBlocked = true;
+}
+
+if (!mutationBlocked || !Object.isFrozen(immutableCapability.paramsSchema.username)) {
+  throw new Error('Expected registered capability nested schema to be deeply frozen.');
+}
+
+if (typeof immutableCapability.execute !== 'function') {
+  throw new Error('Expected capability execute function to be preserved during deep freeze.');
+}
 
 runtime.registerCapability({
   name: 'organization.query',

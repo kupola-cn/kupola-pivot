@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5 - Immutable Capability Registry
+
+### Changed
+
+- Registered capabilities are now deep-cloned and deeply frozen.
+- Later mutations to source capability input, nested schemas, permissions, or metadata no longer change registry behavior.
+
 ## 0.2.4 - Plan Preview
 
 ### Added
