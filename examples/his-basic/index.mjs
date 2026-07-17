@@ -192,7 +192,9 @@ function registerHisCapabilities(targetRuntime) {
         return await context.api.deleteRole(params.id);
       } catch (error) {
         const policy = mapHttpStatusToPolicy(error.status, error.message);
-        throw new Error(policy?.reason ?? error.message);
+        const mappedError = new Error(policy?.reason ?? error.message);
+        mappedError.status = error.status;
+        throw mappedError;
       }
     }
   });

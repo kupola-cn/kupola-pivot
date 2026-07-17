@@ -55,6 +55,16 @@ PIVOT includes policy helpers for common interaction checks:
 
 These helpers are meant to improve UX and reduce accidental misuse. They do not prove access rights. A malicious user can bypass frontend code, so the backend must reject unauthorized requests independently.
 
+## Backend Rejections
+
+When a capability execute function throws an error with `status`, `statusCode`, or `response.status`, PIVOT preserves the backend security meaning:
+
+- `401` becomes a denied blocked command.
+- `403` becomes a denied blocked command.
+- `409` becomes a failed conflict result.
+
+The HTTP status is included in `result.explain.status` and `audit.metadata.httpStatus`. This makes permission failures visible without pretending the frontend was the final authority.
+
 ## Runtime Execution Guardrails
 
 The PIVOT runtime should execute commands only after:

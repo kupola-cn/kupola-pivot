@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 - Backend Rejection Semantics
+
+### Changed
+
+- Runtime execution now maps backend `401` and `403` errors to denied blocked command results.
+- Runtime execution now records backend HTTP status in result explain data and audit metadata.
+- Backend `409` errors are represented as conflict failures.
+
 ## 0.2.2 - Sensitive Param Redaction
 
 ### Added

@@ -92,6 +92,36 @@ runtime.registerCapability({
 });
 
 runtime.registerCapability({
+  name: 'user.backend.forbidden',
+  resource: 'user',
+  action: ActionType.UPDATE,
+  risk: RiskLevel.MEDIUM,
+  permissions: ['user:update'],
+  paramsSchema: {
+    id: { type: 'string', required: true }
+  },
+  execute: async () => {
+    const error = new Error('Forbidden by backend.');
+    error.status = 403;
+    throw error;
+  }
+});
+
+runtime.registerCapability({
+  name: 'user.backend.unauthenticated',
+  resource: 'user',
+  action: ActionType.QUERY,
+  risk: RiskLevel.LOW,
+  permissions: ['user:query'],
+  paramsSchema: {},
+  execute: async () => {
+    const error = new Error('Login is required.');
+    error.response = { status: '401' };
+    throw error;
+  }
+});
+
+runtime.registerCapability({
   name: 'organization.fail',
   resource: 'organization',
   action: ActionType.EXECUTE,
@@ -218,6 +248,44 @@ if (!passwordResult.ok || passwordResult.data.storedPassword !== 'secret-passwor
 
 if (lastConfirmInput.command.params.password !== '[redacted]' || lastConfirmInput.command.params.token !== '[redacted]') {
   throw new Error('Expected confirmation input command params to be redacted.');
+}
+
+const backendForbiddenCommand = createCommand({
+  intent: 'Update user through backend.',
+  resource: 'user',
+  action: ActionType.UPDATE,
+  capability: 'user.backend.forbidden',
+  risk: RiskLevel.MEDIUM,
+  params: { id: 'user-4' }
+});
+
+const backendForbiddenResult = await runtime.executeCommand(backendForbiddenCommand, {
+  actor: { id: 'user-1', permissions: ['user:update'] }
+});
+
+if (backendForbiddenResult.ok || backendForbiddenResult.audit.status !== 'blocked' || backendForbiddenResult.audit.decision !== 'deny') {
+  throw new Error('Expected backend 403 to be represented as a denied blocked command.');
+}
+
+if (backendForbiddenResult.audit.metadata.httpStatus !== 403 || backendForbiddenResult.explain.status !== 403) {
+  throw new Error('Expected backend 403 status to be included in audit and explain metadata.');
+}
+
+const backendUnauthenticatedCommand = createCommand({
+  intent: 'Query user through backend.',
+  resource: 'user',
+  action: ActionType.QUERY,
+  capability: 'user.backend.unauthenticated',
+  risk: RiskLevel.LOW,
+  params: {}
+});
+
+const backendUnauthenticatedResult = await runtime.executeCommand(backendUnauthenticatedCommand, {
+  actor: { id: 'user-1', permissions: ['user:query'] }
+});
+
+if (backendUnauthenticatedResult.ok || backendUnauthenticatedResult.audit.status !== 'blocked' || backendUnauthenticatedResult.explain.status !== 401) {
+  throw new Error('Expected backend 401 to be represented as a blocked command.');
 }
 
 const extraParamCommand = createCommand({

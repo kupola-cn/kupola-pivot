@@ -237,9 +237,10 @@ export function createPivotRuntime(options = {}) {
         audit
       });
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      timeline.push(createTimelineStep('execution', 'failed', 'Command execution failed.', {
-        error: reason
+      const failure = normalizeExecutionError(error);
+      timeline.push(createTimelineStep('execution', failure.timelineStatus, failure.timelineMessage, {
+        error: failure.reason,
+        status: failure.httpStatus
       }));
 
       const audit = emitAudit({
@@ -247,15 +248,20 @@ export function createPivotRuntime(options = {}) {
         intent: command.intent,
         commandId: command.id,
         capability: command.capability,
-        decision: policyDecision.decision,
-        status: CommandStatus.FAILED,
-        reason
+        decision: failure.decision ?? policyDecision.decision,
+        status: failure.commandStatus,
+        reason: failure.reason,
+        metadata: failure.httpStatus ? { httpStatus: failure.httpStatus } : {}
       });
 
       return createResult({
         ok: false,
-        message: 'Command execution failed.',
-        explain: { error: audit.reason, timeline },
+        message: failure.resultMessage,
+        explain: {
+          error: audit.reason,
+          status: failure.httpStatus,
+          timeline
+        },
         audit
       });
     }
@@ -489,6 +495,63 @@ function redactCommand(command, capability) {
     ...command,
     params: redactParams(command.params, capability.paramsSchema)
   };
+}
+
+function normalizeExecutionError(error) {
+  const httpStatus = getErrorStatus(error);
+  const fallbackReason = error instanceof Error ? error.message : String(error);
+
+  if (httpStatus === 401) {
+    return {
+      httpStatus,
+      reason: fallbackReason || 'Authentication is required.',
+      decision: PolicyDecision.DENY,
+      commandStatus: CommandStatus.BLOCKED,
+      resultMessage: fallbackReason || 'Authentication is required.',
+      timelineStatus: 'blocked',
+      timelineMessage: 'Backend authentication rejected command.'
+    };
+  }
+
+  if (httpStatus === 403) {
+    return {
+      httpStatus,
+      reason: fallbackReason || 'Backend authorization rejected this operation.',
+      decision: PolicyDecision.DENY,
+      commandStatus: CommandStatus.BLOCKED,
+      resultMessage: fallbackReason || 'Backend authorization rejected this operation.',
+      timelineStatus: 'blocked',
+      timelineMessage: 'Backend authorization rejected command.'
+    };
+  }
+
+  if (httpStatus === 409) {
+    return {
+      httpStatus,
+      reason: fallbackReason || 'Backend reported a conflict.',
+      decision: PolicyDecision.CONFIRM,
+      commandStatus: CommandStatus.FAILED,
+      resultMessage: fallbackReason || 'Backend reported a conflict.',
+      timelineStatus: 'failed',
+      timelineMessage: 'Backend conflict prevented command execution.'
+    };
+  }
+
+  return {
+    httpStatus,
+    reason: fallbackReason,
+    decision: null,
+    commandStatus: CommandStatus.FAILED,
+    resultMessage: 'Command execution failed.',
+    timelineStatus: 'failed',
+    timelineMessage: 'Command execution failed.'
+  };
+}
+
+function getErrorStatus(error) {
+  const status = error?.status ?? error?.statusCode ?? error?.response?.status;
+  const numericStatus = typeof status === 'string' ? Number.parseInt(status, 10) : status;
+  return Number.isInteger(numericStatus) ? numericStatus : null;
 }
 
 function createPlanResult(plan, nodeResults, ok, message, compensations = [], timeline = []) {
