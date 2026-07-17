@@ -239,3 +239,26 @@ const plan = createPlan({
 ```
 
 When a later node fails, PIVOT runs configured compensations in reverse order for successful nodes.
+
+## Node Result References
+
+Plan nodes can pass data from earlier node results into later node params:
+
+```js
+const plan = createPlan({
+  nodes: [
+    { id: 'lookup-parent', capability: 'organization.query' },
+    {
+      id: 'create-branch',
+      capability: 'organization.create',
+      params: {
+        name: 'Branch C',
+        parentId: { $from: 'lookup-parent', path: 'data.id' }
+      }
+    }
+  ],
+  edges: [{ from: 'lookup-parent', to: 'create-branch' }]
+});
+```
+
+During `previewPlan`, references are shown as placeholders such as `[ref:lookup-parent.data.id]`. During `executePlan`, references are resolved from previous node results. If a source node or path cannot be found, the node fails before its capability execute function is called.

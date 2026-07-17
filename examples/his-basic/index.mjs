@@ -81,7 +81,7 @@ const createBranchPlan = createPlan({
     {
       id: 'create-branch-d',
       capability: 'organization.create',
-      params: { name: '分机构D', parentId: 'group' }
+      params: { name: '分机构D', parentId: { $from: 'query-group', path: 'data.id' } }
     }
   ],
   edges: [{ from: 'query-group', to: 'create-branch-d' }]

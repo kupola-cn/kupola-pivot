@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.7 - Plan Param References
+
+### Added
+
+- Plan node params can reference previous node results with `{ $from, path }`.
+- `previewPlan` shows result references as readable placeholders.
+- `executePlan` fails a node before execution when a param reference cannot be resolved.
+
 ## 0.2.6 - Plan Size Limits
 
 ### Added

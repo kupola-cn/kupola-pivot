@@ -1,6 +1,6 @@
 {
   "name": "kupola-pivot-workspace",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "description": "Workspace for Kupola PIVOT, a protocol-first, intent-driven runtime for secure AI-native web applications.",
   "type": "module",

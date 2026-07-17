@@ -319,7 +319,9 @@ export function createPivotRuntime(options = {}) {
         continue;
       }
 
-      const command = node.command ?? createPlanNodeCommand(plan, node, capability);
+      const command = node.command
+        ? previewPlanCommand(node.command)
+        : createPlanNodeCommand(plan, node, capability, null);
       const preview = await previewCommand(command, {
         ...context,
         plan,
@@ -428,7 +430,39 @@ export function createPivotRuntime(options = {}) {
         continue;
       }
 
-      const command = node.command ?? createPlanNodeCommand(plan, node, capability);
+      let command;
+
+      try {
+        command = node.command
+          ? resolvePlanCommand(node.command, resultsByNodeId)
+          : createPlanNodeCommand(plan, node, capability, resultsByNodeId);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        const result = createResult({
+          ok: false,
+          message: 'Plan node params could not be resolved.',
+          explain: { nodeId: node.id, capability: node.capability, error: reason }
+        });
+
+        nodeResults.push({ node, command: null, result });
+        resultsByNodeId[node.id] = result;
+        timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
+          nodeId: node.id,
+          capability: node.capability,
+          reason
+        }));
+
+        if (stopOnError) {
+          const compensations = compensateOnError
+            ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
+            : [];
+
+          addCompensationTimeline(timeline, compensations);
+          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
+        }
+
+        continue;
+      }
 
       const result = await executeCommand(command, {
         ...context,
@@ -497,13 +531,13 @@ export function createPivotRuntime(options = {}) {
         continue;
       }
 
-      const command = compensation.command ?? createCommand({
+      const command = compensation.command ? resolvePlanCommand(compensation.command, resultsByNodeId) : createCommand({
         intent: compensation.intent ?? `Compensate ${item.node.id}`,
         resource: capability.resource,
         action: capability.action,
         capability: capability.name,
         risk: compensation.risk ?? capability.risk,
-        params: compensation.params ?? {},
+        params: resolvePlanParams(compensation.params ?? {}, resultsByNodeId),
         metadata: {
           ...(compensation.metadata ?? {}),
           planId: plan.id,
@@ -584,20 +618,99 @@ function redactCommand(command, capability) {
   };
 }
 
-function createPlanNodeCommand(plan, node, capability) {
+function createPlanNodeCommand(plan, node, capability, resultsByNodeId = {}) {
+  const params = resultsByNodeId === null
+    ? previewPlanParams(node.params ?? {})
+    : resolvePlanParams(node.params ?? {}, resultsByNodeId);
+
   return createCommand({
     intent: node.intent ?? plan.intent,
     resource: capability.resource,
     action: capability.action,
     capability: capability.name,
     risk: node.risk ?? capability.risk,
-    params: node.params ?? {},
+    params,
     metadata: {
       ...(node.metadata ?? {}),
       planId: plan.id,
       nodeId: node.id
     }
   });
+}
+
+function resolvePlanCommand(command, resultsByNodeId) {
+  return {
+    ...command,
+    params: resolvePlanParams(command.params ?? {}, resultsByNodeId)
+  };
+}
+
+function previewPlanCommand(command) {
+  return {
+    ...command,
+    params: previewPlanParams(command.params ?? {})
+  };
+}
+
+function previewPlanParams(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => previewPlanParams(item));
+  }
+
+  if (isPlainObject(value)) {
+    if (typeof value.$from === 'string') {
+      return `[ref:${value.$from}.${value.path ?? 'data'}]`;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, previewPlanParams(entryValue)])
+    );
+  }
+
+  return value;
+}
+
+function resolvePlanParams(value, resultsByNodeId) {
+  if (Array.isArray(value)) {
+    return value.map((item) => resolvePlanParams(item, resultsByNodeId));
+  }
+
+  if (isPlainObject(value)) {
+    if (typeof value.$from === 'string') {
+      const source = resultsByNodeId[value.$from];
+
+      if (!source) {
+        throw new Error(`Plan param reference source was not found: ${value.$from}`);
+      }
+
+      return readPath(source, value.path ?? 'data');
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, resolvePlanParams(entryValue, resultsByNodeId)])
+    );
+  }
+
+  return value;
+}
+
+function readPath(source, path) {
+  const parts = String(path).split('.').filter(Boolean);
+  let current = source;
+
+  for (const part of parts) {
+    if (current === null || current === undefined || !(part in Object(current))) {
+      throw new Error(`Plan param reference path was not found: ${path}`);
+    }
+
+    current = current[part];
+  }
+
+  return current;
+}
+
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === '[object Object]';
 }
 
 function normalizeExecutionError(error) {

@@ -393,6 +393,37 @@ const plan = createPlan({
   edges: [{ from: 'validate-parent', to: 'create-branch' }]
 });
 
+const referencedPlan = createPlan({
+  intent: 'Create a HIS organization branch from a previous query result.',
+  nodes: [
+    { id: 'lookup-parent', capability: 'organization.query' },
+    {
+      id: 'create-referenced-branch',
+      capability: 'organization.create',
+      params: {
+        name: 'Branch G',
+        parentId: { $from: 'lookup-parent', path: 'data.id' }
+      }
+    }
+  ],
+  edges: [{ from: 'lookup-parent', to: 'create-referenced-branch' }]
+});
+
+const brokenReferencePlan = createPlan({
+  intent: 'Try to create a branch with a missing reference.',
+  nodes: [
+    {
+      id: 'create-with-missing-reference',
+      capability: 'organization.create',
+      params: {
+        name: 'Branch H',
+        parentId: { $from: 'missing-node', path: 'data.id' }
+      }
+    }
+  ],
+  edges: []
+});
+
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const order = getExecutionOrder(plan);
@@ -412,6 +443,24 @@ const planResult = await runtime.executePlan(plan, {
   actor: {
     id: 'user-1',
     permissions: ['organization:query', 'organization:create']
+  }
+});
+const referencedPlanPreview = await runtime.previewPlan(referencedPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
+const referencedPlanResult = await runtime.executePlan(referencedPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
+const brokenReferenceResult = await runtime.executePlan(brokenReferencePlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:create']
   }
 });
 
@@ -471,6 +520,18 @@ if (oversizedPreview.ok || oversizedPreview.data.status !== 'blocked') {
 
 if (oversizedExecution.ok || oversizedExecution.data.nodes.length !== 0) {
   throw new Error('Expected runtime plan execution to reject oversized plans before nodes run.');
+}
+
+if (!referencedPlanPreview.ok || referencedPlanPreview.data.nodes[1].command.params.parentId !== '[ref:lookup-parent.data.id]') {
+  throw new Error('Expected plan preview to show node param reference placeholders.');
+}
+
+if (!referencedPlanResult.ok || referencedPlanResult.data.nodes[1].result.data.parentId !== 'group') {
+  throw new Error('Expected plan execution to resolve params from previous node results.');
+}
+
+if (brokenReferenceResult.ok || !brokenReferenceResult.data.nodes[0].result.message.includes('params could not be resolved')) {
+  throw new Error('Expected plan execution to fail when a param reference cannot be resolved.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {
