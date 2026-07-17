@@ -60,6 +60,7 @@ export function createCapability(input = {}) {
     risk: RiskLevel.LOW,
     description: '',
     paramsSchema: {},
+    allowUnknownParams: false,
     permissions: [],
     requiresConfirmation: false,
     execute: null,
@@ -148,8 +149,9 @@ export function validateCommand(command, options = {}) {
   return createValidationResult(errors, warnings);
 }
 
-export function validateParams(params = {}, schema = {}) {
+export function validateParams(params = {}, schema = {}, options = {}) {
   const errors = [];
+  const allowUnknown = Boolean(options.allowUnknown);
 
   if (!isPlainObject(params)) {
     return createValidationResult(['Params must be a plain object.']);
@@ -182,6 +184,16 @@ export function validateParams(params = {}, schema = {}) {
     }
   }
 
+  if (!allowUnknown) {
+    const knownFields = new Set(Object.keys(schema));
+
+    for (const field of Object.keys(params)) {
+      if (!knownFields.has(field)) {
+        errors.push(`Unknown param is not allowed: ${field}`);
+      }
+    }
+  }
+
   return createValidationResult(errors);
 }
 
@@ -206,6 +218,10 @@ export function validateCapability(capability) {
 
   if (!isPlainObject(capability.paramsSchema)) {
     errors.push('Capability paramsSchema must be a plain object.');
+  }
+
+  if (typeof capability.allowUnknownParams !== 'boolean') {
+    errors.push('Capability allowUnknownParams must be a boolean.');
   }
 
   if (!Array.isArray(capability.permissions)) {

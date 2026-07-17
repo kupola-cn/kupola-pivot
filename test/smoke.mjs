@@ -8,6 +8,7 @@ import {
   getExecutionOrder,
   renderResultToHTML,
   renderTimelineToHTML,
+  validateParams,
   validatePlan
 } from '@kupola/pivot';
 import { readFileSync } from 'node:fs';
@@ -57,6 +58,19 @@ runtime.registerCapability({
 });
 
 runtime.registerCapability({
+  name: 'organization.metadata',
+  resource: 'organization',
+  action: ActionType.UPDATE,
+  risk: RiskLevel.MEDIUM,
+  permissions: ['organization:create'],
+  paramsSchema: {
+    id: { type: 'string', required: true }
+  },
+  allowUnknownParams: true,
+  execute: async ({ params }) => params
+});
+
+runtime.registerCapability({
   name: 'organization.fail',
   resource: 'organization',
   action: ActionType.EXECUTE,
@@ -90,6 +104,31 @@ if (command.id === secondCommand.id) {
   throw new Error('Expected command IDs to be unique.');
 }
 
+const unknownParamValidation = validateParams(
+  { name: 'Branch C', parentId: 'group', role: 'admin' },
+  {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  }
+);
+
+if (unknownParamValidation.valid) {
+  throw new Error('Expected unknown params to be rejected by default.');
+}
+
+const allowedUnknownParamValidation = validateParams(
+  { name: 'Branch C', parentId: 'group', metadata: { source: 'ai' } },
+  {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  { allowUnknown: true }
+);
+
+if (!allowedUnknownParamValidation.valid) {
+  throw new Error('Expected unknown params to be allowed when explicitly enabled.');
+}
+
 const validation = runtime.validateCommand(command);
 const preview = await runtime.previewCommand(command, {
   actor: { id: 'user-1', permissions: ['organization:create'] }
@@ -120,6 +159,40 @@ if (!Array.isArray(result.explain.timeline) || !result.explain.timeline.some((st
 
 if (runtime.getAuditEvents().length !== 1) {
   throw new Error('Expected exactly one audit event.');
+}
+
+const extraParamCommand = createCommand({
+  intent: 'Create Branch C with an unexpected admin flag.',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  capability: 'organization.create',
+  risk: RiskLevel.MEDIUM,
+  params: { name: 'Branch C', parentId: 'group', admin: true }
+});
+
+const extraParamResult = await runtime.executeCommand(extraParamCommand, {
+  actor: { id: 'user-1', permissions: ['organization:create'] }
+});
+
+if (extraParamResult.ok || !extraParamResult.explain.errors.some((error) => error.includes('Unknown param'))) {
+  throw new Error('Expected execution to reject undeclared command params.');
+}
+
+const allowedExtraParamCommand = createCommand({
+  intent: 'Attach dynamic metadata to Branch C.',
+  resource: 'organization',
+  action: ActionType.UPDATE,
+  capability: 'organization.metadata',
+  risk: RiskLevel.MEDIUM,
+  params: { id: 'org-1', source: 'ai' }
+});
+
+const allowedExtraParamResult = await runtime.executeCommand(allowedExtraParamCommand, {
+  actor: { id: 'user-1', permissions: ['organization:create'] }
+});
+
+if (!allowedExtraParamResult.ok || allowedExtraParamResult.data.source !== 'ai') {
+  throw new Error('Expected capability-level allowUnknownParams to permit extra params.');
 }
 
 const blockedResult = await runtime.executeCommand(command, {

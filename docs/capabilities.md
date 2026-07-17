@@ -17,6 +17,7 @@ runtime.registerCapability({
     name: { type: 'string', required: true },
     parentId: { type: 'string', required: true }
   },
+  allowUnknownParams: false,
   execute: async ({ params }) => {
     return api.createOrganization(params);
   }
@@ -69,6 +70,7 @@ This mechanism gives PIVOT a hard boundary:
 - Unknown action: rejected.
 - Unknown capability: rejected.
 - Invalid params: rejected.
+- Undeclared params: rejected by default.
 - High-risk operation: confirmation or approval required.
 - Backend 401/403: final authority, always respected.
 
@@ -91,6 +93,38 @@ command
 ```
 
 The capability `execute` function is owned by the host project. PIVOT should not know how to call a HIS API, CRM API, database, or AI provider by default. The app registers those details through capabilities.
+
+## Unknown Params
+
+Unknown params are rejected by default. This prevents AI output from smuggling undeclared fields into project-owned execute functions.
+
+```js
+runtime.registerCapability({
+  name: 'organization.create',
+  resource: 'organization',
+  action: 'create',
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  }
+});
+```
+
+With the schema above, a command containing `{ name, parentId, admin: true }` fails validation because `admin` is not declared.
+
+Only enable dynamic params for capabilities that are intentionally designed for extension:
+
+```js
+runtime.registerCapability({
+  name: 'organization.metadata.update',
+  resource: 'organization',
+  action: 'update',
+  paramsSchema: {
+    id: { type: 'string', required: true }
+  },
+  allowUnknownParams: true
+});
+```
 
 Example:
 

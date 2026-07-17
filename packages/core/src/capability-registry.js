@@ -55,7 +55,9 @@ export function createCapabilityRegistry(options = {}) {
       }
 
       const capability = capabilities.get(command.capability);
-      const paramValidation = validateParams(command.params, capability.paramsSchema);
+      const paramValidation = validateParams(command.params, capability.paramsSchema, {
+        allowUnknown: capability.allowUnknownParams
+      });
 
       return {
         valid: commandValidation.valid && paramValidation.valid,

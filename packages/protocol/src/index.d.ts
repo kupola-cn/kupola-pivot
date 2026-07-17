@@ -72,6 +72,7 @@ export interface PivotCapability {
   risk: RiskLevelValue;
   description: string;
   paramsSchema: ParamsSchema;
+  allowUnknownParams: boolean;
   permissions: string[];
   requiresConfirmation: boolean;
   execute?: PivotCapabilityExecutor | null;
@@ -123,5 +124,5 @@ export function createResult<TData = unknown>(input?: Partial<PivotResult<TData>
 export function createAuditEvent(input?: Partial<PivotAuditEvent>): PivotAuditEvent;
 export function createValidationResult(errors?: string[], warnings?: string[]): ValidationResult;
 export function validateCommand(command: unknown, options?: { capabilities?: Map<string, PivotCapability> }): ValidationResult;
-export function validateParams(params?: Record<string, unknown>, schema?: ParamsSchema): ValidationResult;
+export function validateParams(params?: Record<string, unknown>, schema?: ParamsSchema, options?: { allowUnknown?: boolean }): ValidationResult;
 export function validateCapability(capability: unknown): ValidationResult;

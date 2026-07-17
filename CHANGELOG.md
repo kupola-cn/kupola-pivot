@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 - Security Hardening
+
+### Added
+
+- Capability-level `allowUnknownParams` switch for intentionally dynamic command params.
+
+### Changed
+
+- Command param validation now rejects undeclared params by default before runtime execution.
+- Security and capability docs now describe the unknown-param boundary.
+
 ## 0.2.0 - Developer Preview
 
 PIVOT 0.2.0 marks the first Developer Preview release.

@@ -26,6 +26,7 @@ PIVOT should:
 - reject unknown actions and unknown resources
 - require capability registration before execution
 - validate parameters before calling project APIs
+- reject undeclared command params by default
 - classify risk before execution
 - require confirmation for destructive, sensitive, or cross-scope operations
 - avoid putting sensitive fields into prompts, logs, or UI previews by default
@@ -60,6 +61,7 @@ The PIVOT runtime should execute commands only after:
 - the command matches the protocol
 - the capability is registered
 - params match the capability schema
+- params do not include undeclared fields unless the capability explicitly allows them
 - frontend policy has allowed or requested confirmation
 - confirmation has passed when required
 - the host project execute function is available
