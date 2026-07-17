@@ -196,6 +196,12 @@ These policies are interaction guardrails. Backend APIs must still enforce real 
 For multi-step business work, register each step as a capability and build a plan:
 
 ```js
+const preview = await runtime.previewPlan(plan, context);
+```
+
+`previewPlan` validates the plan and previews every node through the same command validation and policy pipeline used by execution. It does not call capability `execute` functions.
+
+```js
 const result = await runtime.executePlan(plan, context);
 ```
 

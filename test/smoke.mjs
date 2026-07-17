@@ -353,6 +353,18 @@ const plan = createPlan({
 
 const planValidation = validatePlan(plan);
 const order = getExecutionOrder(plan);
+const planPreview = await runtime.previewPlan(plan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
+const blockedPlanPreview = await runtime.previewPlan(plan, {
+  actor: {
+    id: 'user-2',
+    permissions: []
+  }
+});
 const planResult = await runtime.executePlan(plan, {
   actor: {
     id: 'user-1',
@@ -386,6 +398,18 @@ const failingPlanResult = await runtime.executePlan(failingPlan, {
 
 if (!planValidation.valid || order.map((node) => node.id).join(',') !== 'validate-parent,create-branch') {
   throw new Error('Expected plan validation and execution order to succeed.');
+}
+
+if (!planPreview.ok || !planPreview.data.requiresConfirmation || planPreview.data.status !== 'ready') {
+  throw new Error('Expected plan preview to be ready and require confirmation.');
+}
+
+if (!Array.isArray(planPreview.explain.timeline) || !planPreview.explain.timeline.some((step) => step.stage === 'plan.node.preview')) {
+  throw new Error('Expected plan preview to include node preview timeline steps.');
+}
+
+if (blockedPlanPreview.ok || blockedPlanPreview.data.status !== 'blocked') {
+  throw new Error('Expected unauthorized plan preview to be blocked.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {

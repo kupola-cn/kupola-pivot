@@ -138,6 +138,7 @@ const preview = await runtime.previewCommand(command, {
 Use `executePlan` when a business task needs multiple ordered capabilities:
 
 ```js
+const planPreview = await runtime.previewPlan(plan, context);
 const planResult = await runtime.executePlan(plan, context);
 ```
 

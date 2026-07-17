@@ -111,6 +111,7 @@ const compensatedPlan = createPlan({
 console.log('query roles:', await runtime.executeCommand(queryRoles, adminContext));
 console.log('create branch preview:', await runtime.previewCommand(createBranch, adminContext));
 console.log('create branch:', await runtime.executeCommand(createBranch, adminContext));
+console.log('create branch plan preview:', await runtime.previewPlan(createBranchPlan, adminContext));
 console.log('create branch plan:', await runtime.executePlan(createBranchPlan, adminContext));
 console.log('compensated plan:', await runtime.executePlan(compensatedPlan, adminContext));
 console.log('blocked delete:', await runtime.executeCommand(deleteRole, limitedContext));

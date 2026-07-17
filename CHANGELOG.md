@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 - Plan Preview
+
+### Added
+
+- `previewPlan()` runtime API for validating and previewing all plan nodes before execution.
+- Plan preview timeline steps for node-level readiness and blocking reasons.
+
 ## 0.2.3 - Backend Rejection Semantics
 
 ### Changed

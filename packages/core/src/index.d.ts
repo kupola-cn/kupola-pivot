@@ -55,6 +55,16 @@ export interface PivotRuntime {
     policy: unknown;
     requiresConfirmation: boolean;
   }>>;
+  previewPlan(plan: PivotPlan, context?: PivotExecutionContext): Promise<PivotResult<{
+    plan: PivotPlan;
+    nodes: Array<{
+      node: PivotPlanNode;
+      command: PivotCommand | null;
+      preview: PivotResult;
+    }>;
+    status: 'ready' | 'blocked';
+    requiresConfirmation: boolean;
+  }>>;
   executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<TData>>;
   executePlan(plan: PivotPlan, context?: PivotExecutionContext, options?: {
     stopOnError?: boolean;

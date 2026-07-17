@@ -267,6 +267,103 @@ export function createPivotRuntime(options = {}) {
     }
   };
 
+  const previewPlan = async (plan, context = {}) => {
+    const timeline = [];
+    const validation = validatePlan(plan);
+
+    if (!validation.valid) {
+      timeline.push(createTimelineStep('plan.validation', 'failed', 'Plan validation failed.', validation));
+
+      return createResult({
+        ok: false,
+        message: 'Plan validation failed.',
+        explain: { ...validation, timeline },
+        data: {
+          plan,
+          nodes: [],
+          status: 'blocked',
+          requiresConfirmation: false
+        }
+      });
+    }
+
+    const orderedNodes = getExecutionOrder(plan);
+    const nodePreviews = [];
+    timeline.push(createTimelineStep('plan.validation', 'passed', 'Plan validation passed.', {
+      warnings: validation.warnings,
+      nodes: orderedNodes.length
+    }));
+
+    for (const node of orderedNodes) {
+      timeline.push(createTimelineStep('plan.node.preview', 'started', `Plan node preview started: ${node.id}`, {
+        nodeId: node.id,
+        capability: node.capability
+      }));
+
+      const capability = registry.get(node.capability);
+
+      if (!capability) {
+        const preview = createResult({
+          ok: false,
+          message: `Plan node capability is not registered: ${node.capability}`,
+          explain: { nodeId: node.id, capability: node.capability }
+        });
+
+        nodePreviews.push({ node, command: null, preview });
+        timeline.push(createTimelineStep('plan.node.preview', 'blocked', `Plan node preview blocked: ${node.id}`, {
+          nodeId: node.id,
+          capability: node.capability,
+          reason: preview.message
+        }));
+        continue;
+      }
+
+      const command = node.command ?? createPlanNodeCommand(plan, node, capability);
+      const preview = await previewCommand(command, {
+        ...context,
+        plan,
+        node
+      });
+
+      nodePreviews.push({
+        node,
+        command: preview.data?.command ?? redactCommand(command, capability),
+        preview
+      });
+      timeline.push(createTimelineStep('plan.node.preview', preview.ok ? 'ready' : 'blocked', `Plan node preview ${preview.ok ? 'ready' : 'blocked'}: ${node.id}`, {
+        nodeId: node.id,
+        capability: node.capability,
+        commandId: command.id,
+        reason: preview.message
+      }));
+    }
+
+    const blockedNodes = nodePreviews.filter((item) => !item.preview.ok);
+    const confirmationNodes = nodePreviews.filter((item) => Boolean(item.preview.data?.requiresConfirmation));
+    const ok = blockedNodes.length === 0;
+    timeline.push(createTimelineStep('plan.preview', ok ? 'ready' : 'blocked', ok ? 'Plan preview is ready.' : 'Plan preview contains blocked nodes.', {
+      blockedNodes: blockedNodes.length,
+      confirmationNodes: confirmationNodes.length
+    }));
+
+    return createResult({
+      ok,
+      message: ok ? 'Plan preview is ready.' : 'Plan preview contains blocked nodes.',
+      data: {
+        plan,
+        nodes: nodePreviews,
+        status: ok ? 'ready' : 'blocked',
+        requiresConfirmation: confirmationNodes.length > 0
+      },
+      explain: {
+        nodes: nodePreviews.length,
+        blockedNodes: blockedNodes.length,
+        confirmationNodes: confirmationNodes.length,
+        timeline
+      }
+    });
+  };
+
   const executePlan = async (plan, context = {}, options = {}) => {
     const timeline = [];
     const validation = validatePlan(plan);
@@ -330,19 +427,7 @@ export function createPivotRuntime(options = {}) {
         continue;
       }
 
-      const command = node.command ?? createCommand({
-        intent: node.intent ?? plan.intent,
-        resource: capability.resource,
-        action: capability.action,
-        capability: capability.name,
-        risk: node.risk ?? capability.risk,
-        params: node.params ?? {},
-        metadata: {
-          ...(node.metadata ?? {}),
-          planId: plan.id,
-          nodeId: node.id
-        }
-      });
+      const command = node.command ?? createPlanNodeCommand(plan, node, capability);
 
       const result = await executeCommand(command, {
         ...context,
@@ -464,6 +549,7 @@ export function createPivotRuntime(options = {}) {
     },
 
     previewCommand,
+    previewPlan,
     executeCommand,
     executePlan,
 
@@ -495,6 +581,22 @@ function redactCommand(command, capability) {
     ...command,
     params: redactParams(command.params, capability.paramsSchema)
   };
+}
+
+function createPlanNodeCommand(plan, node, capability) {
+  return createCommand({
+    intent: node.intent ?? plan.intent,
+    resource: capability.resource,
+    action: capability.action,
+    capability: capability.name,
+    risk: node.risk ?? capability.risk,
+    params: node.params ?? {},
+    metadata: {
+      ...(node.metadata ?? {}),
+      planId: plan.id,
+      nodeId: node.id
+    }
+  });
 }
 
 function normalizeExecutionError(error) {
