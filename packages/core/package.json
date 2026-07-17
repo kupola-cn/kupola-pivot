@@ -1,0 +1,18 @@
+{
+  "name": "@kupola/pivot",
+  "version": "0.1.0",
+  "description": "Core runtime for Kupola PIVOT.",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@kupola/pivot-orchestrator": "0.1.0",
+    "@kupola/pivot-policy": "0.1.0",
+    "@kupola/pivot-protocol": "0.1.0",
+    "@kupola/pivot-ui": "0.1.0"
+  },
+  "license": "MIT"
+}
