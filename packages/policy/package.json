@@ -8,5 +8,25 @@
   "exports": {
     ".": "./src/index.js"
   },
-  "license": "MIT"
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "kupola",
+    "pivot",
+    "policy",
+    "permission",
+    "security",
+    "ai"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kupola-cn/kupola-pivot.git",
+    "directory": "packages/policy"
+  },
+  "bugs": {
+    "url": "https://github.com/kupola-cn/kupola-pivot/issues"
+  },
+  "homepage": "https://github.com/kupola-cn/kupola-pivot#readme"
 }

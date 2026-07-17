@@ -8,8 +8,27 @@
   "exports": {
     ".": "./src/index.js"
   },
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "kupola",
+    "pivot",
+    "ui",
+    "trusted-ui",
+    "ai"
+  ],
   "peerDependencies": {
     "@kupola/kupola": "^2.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kupola-cn/kupola-pivot.git",
+    "directory": "packages/ui"
+  },
+  "bugs": {
+    "url": "https://github.com/kupola-cn/kupola-pivot/issues"
+  },
+  "homepage": "https://github.com/kupola-cn/kupola-pivot#readme"
 }

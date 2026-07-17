@@ -8,5 +8,24 @@
   "exports": {
     ".": "./src/index.js"
   },
-  "license": "MIT"
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "kupola",
+    "pivot",
+    "workflow",
+    "orchestration",
+    "ai"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kupola-cn/kupola-pivot.git",
+    "directory": "packages/orchestrator"
+  },
+  "bugs": {
+    "url": "https://github.com/kupola-cn/kupola-pivot/issues"
+  },
+  "homepage": "https://github.com/kupola-cn/kupola-pivot#readme"
 }
