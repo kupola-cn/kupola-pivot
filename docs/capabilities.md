@@ -126,6 +126,27 @@ runtime.registerCapability({
 });
 ```
 
+## Sensitive Params
+
+Use `sensitive: true` for fields that must not be shown in previews or confirmation UI:
+
+```js
+runtime.registerCapability({
+  name: 'user.password.update',
+  resource: 'user',
+  action: 'update',
+  paramsSchema: {
+    id: { type: 'string', required: true },
+    password: { type: 'string', required: true, sensitive: true }
+  },
+  execute: async ({ params }) => {
+    return api.updatePassword(params);
+  }
+});
+```
+
+`previewCommand` and confirmation UI receive `[redacted]` for sensitive params. The capability `execute` function receives the original params.
+
 Example:
 
 ```js

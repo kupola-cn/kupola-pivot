@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.2 - Sensitive Param Redaction
+
+### Added
+
+- `redactParams()` protocol helper for UI-safe command previews.
+- `FieldRule.sensitive` for capability schema fields.
+
+### Changed
+
+- `previewCommand` and confirmation inputs now receive redacted command params.
+- Sensitive field names such as `password`, `token`, `secret`, `apiKey`, and `authorization` are redacted by default.
+
 ## 0.2.1 - Security Hardening
 
 ### Added

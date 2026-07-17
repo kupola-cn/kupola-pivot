@@ -6,6 +6,7 @@ import {
   createPermissionPolicy,
   createPivotRuntime,
   getExecutionOrder,
+  redactParams,
   renderResultToHTML,
   renderTimelineToHTML,
   validateParams,
@@ -13,10 +14,15 @@ import {
 } from '@kupola/pivot';
 import { readFileSync } from 'node:fs';
 
+let lastConfirmInput = null;
+
 const runtime = createPivotRuntime({
   policies: [createPermissionPolicy()],
   ui: {
-    confirm: async () => true
+    confirm: async (input) => {
+      lastConfirmInput = input;
+      return true;
+    }
   }
 });
 
@@ -68,6 +74,21 @@ runtime.registerCapability({
   },
   allowUnknownParams: true,
   execute: async ({ params }) => params
+});
+
+runtime.registerCapability({
+  name: 'user.password.update',
+  resource: 'user',
+  action: ActionType.UPDATE,
+  risk: RiskLevel.HIGH,
+  permissions: ['user:update'],
+  paramsSchema: {
+    id: { type: 'string', required: true },
+    password: { type: 'string', required: true, sensitive: true },
+    token: { type: 'string', required: true }
+  },
+  requiresConfirmation: true,
+  execute: async ({ params }) => ({ id: params.id, storedPassword: params.password })
 });
 
 runtime.registerCapability({
@@ -129,6 +150,15 @@ if (!allowedUnknownParamValidation.valid) {
   throw new Error('Expected unknown params to be allowed when explicitly enabled.');
 }
 
+const redactedParams = redactParams(
+  { password: 'secret-password', token: 'session-token', displayName: 'Alice' },
+  { password: { type: 'string', sensitive: true }, token: 'string', displayName: 'string' }
+);
+
+if (redactedParams.password !== '[redacted]' || redactedParams.token !== '[redacted]' || redactedParams.displayName !== 'Alice') {
+  throw new Error('Expected sensitive params to be redacted by schema and default sensitive names.');
+}
+
 const validation = runtime.validateCommand(command);
 const preview = await runtime.previewCommand(command, {
   actor: { id: 'user-1', permissions: ['organization:create'] }
@@ -159,6 +189,35 @@ if (!Array.isArray(result.explain.timeline) || !result.explain.timeline.some((st
 
 if (runtime.getAuditEvents().length !== 1) {
   throw new Error('Expected exactly one audit event.');
+}
+
+const passwordCommand = createCommand({
+  intent: 'Update a user password.',
+  resource: 'user',
+  action: ActionType.UPDATE,
+  capability: 'user.password.update',
+  risk: RiskLevel.HIGH,
+  params: { id: 'user-3', password: 'secret-password', token: 'session-token' }
+});
+
+const passwordPreview = await runtime.previewCommand(passwordCommand, {
+  actor: { id: 'user-1', permissions: ['user:update'] }
+});
+
+if (passwordPreview.data.command.params.password !== '[redacted]' || passwordPreview.data.command.params.token !== '[redacted]') {
+  throw new Error('Expected preview command params to be redacted.');
+}
+
+const passwordResult = await runtime.executeCommand(passwordCommand, {
+  actor: { id: 'user-1', permissions: ['user:update'] }
+});
+
+if (!passwordResult.ok || passwordResult.data.storedPassword !== 'secret-password') {
+  throw new Error('Expected execution to receive original sensitive params.');
+}
+
+if (lastConfirmInput.command.params.password !== '[redacted]' || lastConfirmInput.command.params.token !== '[redacted]') {
+  throw new Error('Expected confirmation input command params to be redacted.');
 }
 
 const extraParamCommand = createCommand({

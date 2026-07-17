@@ -48,6 +48,7 @@ export interface FieldRule {
   type?: FieldTypeValue;
   required?: boolean;
   options?: unknown[];
+  sensitive?: boolean;
 }
 
 export type ParamsSchema = Record<string, FieldTypeValue | FieldRule>;
@@ -125,4 +126,8 @@ export function createAuditEvent(input?: Partial<PivotAuditEvent>): PivotAuditEv
 export function createValidationResult(errors?: string[], warnings?: string[]): ValidationResult;
 export function validateCommand(command: unknown, options?: { capabilities?: Map<string, PivotCapability> }): ValidationResult;
 export function validateParams(params?: Record<string, unknown>, schema?: ParamsSchema, options?: { allowUnknown?: boolean }): ValidationResult;
+export function redactParams(params?: Record<string, unknown>, schema?: ParamsSchema, options?: {
+  redactedValue?: unknown;
+  sensitiveNames?: string[];
+}): Record<string, unknown>;
 export function validateCapability(capability: unknown): ValidationResult;

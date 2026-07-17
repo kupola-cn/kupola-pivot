@@ -27,6 +27,7 @@ PIVOT should:
 - require capability registration before execution
 - validate parameters before calling project APIs
 - reject undeclared command params by default
+- redact sensitive params before passing commands to preview and confirmation UI
 - classify risk before execution
 - require confirmation for destructive, sensitive, or cross-scope operations
 - avoid putting sensitive fields into prompts, logs, or UI previews by default
@@ -67,6 +68,21 @@ The PIVOT runtime should execute commands only after:
 - the host project execute function is available
 
 If any step fails, execution returns a failed result and writes an audit event. PIVOT should not silently fall back to direct API calls or AI-generated URLs.
+
+## Sensitive Params
+
+Capability schemas can mark params as sensitive:
+
+```js
+paramsSchema: {
+  id: { type: 'string', required: true },
+  password: { type: 'string', required: true, sensitive: true }
+}
+```
+
+PIVOT redacts sensitive params in command preview and confirmation input. The capability `execute` function still receives the original params so the project can call its own backend API.
+
+Common sensitive field names such as `password`, `token`, `secret`, `apiKey`, and `authorization` are also redacted by default.
 
 ## Audit Trail
 

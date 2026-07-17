@@ -9,6 +9,7 @@ export {
   createCommand,
   createResult,
   createValidationResult,
+  redactParams,
   validateCapability,
   validateCommand,
   validateParams
@@ -29,7 +30,7 @@ export { addEdge, addNode, createPlan, getExecutionOrder, validatePlan } from '@
 export { createTrustedUIAdapter, mountResult, mountTimeline, renderResultToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
-import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult } from '@kupola/pivot-protocol';
+import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, redactParams } from '@kupola/pivot-protocol';
 import { PolicyDecision, confirm, createPolicyPipeline } from '@kupola/pivot-policy';
 import { getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 import { createCapabilityRegistry } from './capability-registry.js';
@@ -88,7 +89,7 @@ export function createPivotRuntime(options = {}) {
     return createResult({
       ok: policyDecision.decision !== PolicyDecision.DENY && policyDecision.decision !== PolicyDecision.ESCALATE,
       data: {
-        command,
+        command: redactCommand(command, capability),
         capability: toCapabilityPreview(capability),
         policy: policyDecision,
         requiresConfirmation
@@ -163,7 +164,7 @@ export function createPivotRuntime(options = {}) {
     timeline.push(createTimelineStep('confirmation', requiresConfirmation ? 'required' : 'skipped', requiresConfirmation ? 'Confirmation is required.' : 'Confirmation is not required.'));
 
     const confirmation = requiresConfirmation
-      ? await ui.confirm({ command, capability, policy: policyDecision, context })
+      ? await ui.confirm({ command: redactCommand(command, capability), capability, policy: policyDecision, context })
       : true;
 
     if (!confirmation) {
@@ -481,6 +482,13 @@ function needsConfirmation(command, capability, policyDecision) {
 function toCapabilityPreview(capability) {
   const { execute, ...preview } = capability;
   return preview;
+}
+
+function redactCommand(command, capability) {
+  return {
+    ...command,
+    params: redactParams(command.params, capability.paramsSchema)
+  };
 }
 
 function createPlanResult(plan, nodeResults, ok, message, compensations = [], timeline = []) {

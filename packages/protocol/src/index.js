@@ -197,6 +197,25 @@ export function validateParams(params = {}, schema = {}, options = {}) {
   return createValidationResult(errors);
 }
 
+export function redactParams(params = {}, schema = {}, options = {}) {
+  if (!isPlainObject(params)) {
+    return {};
+  }
+
+  const safeSchema = isPlainObject(schema) ? schema : {};
+  const redactedValue = options.redactedValue ?? '[redacted]';
+  const sensitiveNames = options.sensitiveNames ?? DEFAULT_SENSITIVE_PARAM_NAMES;
+  const output = {};
+
+  for (const [field, value] of Object.entries(params)) {
+    const rule = normalizeFieldRule(safeSchema[field]);
+    const sensitive = rule.sensitive ?? isSensitiveParamName(field, sensitiveNames);
+    output[field] = sensitive ? redactedValue : value;
+  }
+
+  return output;
+}
+
 export function validateCapability(capability) {
   const errors = [];
 
@@ -237,13 +256,14 @@ export function validateCapability(capability) {
 
 function normalizeFieldRule(rule) {
   if (typeof rule === 'string') {
-    return { type: rule, required: false, options: [] };
+    return { type: rule, required: false, options: [], sensitive: undefined };
   }
 
   return {
     type: rule?.type ?? FieldType.STRING,
     required: Boolean(rule?.required),
-    options: Array.isArray(rule?.options) ? rule.options : []
+    options: Array.isArray(rule?.options) ? rule.options : [],
+    sensitive: typeof rule?.sensitive === 'boolean' ? rule.sensitive : undefined
   };
 }
 
@@ -280,6 +300,26 @@ function isMissing(value) {
 
 function isPlainObject(value) {
   return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+const DEFAULT_SENSITIVE_PARAM_NAMES = [
+  'password',
+  'passwd',
+  'pwd',
+  'token',
+  'accessToken',
+  'refreshToken',
+  'secret',
+  'apiKey',
+  'apikey',
+  'authorization',
+  'credential',
+  'credentials'
+];
+
+function isSensitiveParamName(field, sensitiveNames) {
+  const normalized = String(field).toLowerCase();
+  return sensitiveNames.some((name) => normalized === String(name).toLowerCase());
 }
 
 let idCounter = 0;
