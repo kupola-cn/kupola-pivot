@@ -36,6 +36,19 @@ const command = createCommand({
   params: { name: 'Branch C', parentId: 'group' }
 });
 
+const secondCommand = createCommand({
+  intent: 'Create Branch D under the group.',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  capability: 'organization.create',
+  risk: RiskLevel.MEDIUM,
+  params: { name: 'Branch D', parentId: 'group' }
+});
+
+if (command.id === secondCommand.id) {
+  throw new Error('Expected command IDs to be unique.');
+}
+
 const validation = runtime.validateCommand(command);
 const result = await runtime.executeCommand(command, {
   actor: { id: 'user-1', permissions: ['organization:create'] }

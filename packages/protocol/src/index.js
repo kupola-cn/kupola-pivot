@@ -39,7 +39,7 @@ export const FieldType = Object.freeze({
 export function createCommand(input = {}) {
   return {
     protocolVersion: PIVOT_PROTOCOL_VERSION,
-    id: input.id ?? `cmd:${Date.now()}`,
+    id: input.id ?? createId('cmd'),
     intent: '',
     resource: '',
     action: '',
@@ -81,7 +81,7 @@ export function createResult(input = {}) {
 
 export function createAuditEvent(input = {}) {
   return {
-    id: input.id ?? `audit:${Date.now()}`,
+    id: input.id ?? createId('audit'),
     timestamp: input.timestamp ?? new Date().toISOString(),
     actor: input.actor ?? null,
     intent: input.intent ?? '',
@@ -264,4 +264,15 @@ function isMissing(value) {
 
 function isPlainObject(value) {
   return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+let idCounter = 0;
+
+function createId(prefix) {
+  if (globalThis.crypto?.randomUUID) {
+    return `${prefix}:${globalThis.crypto.randomUUID()}`;
+  }
+
+  idCounter += 1;
+  return `${prefix}:${Date.now()}:${idCounter}`;
 }

@@ -1,6 +1,6 @@
 {
   "name": "kupola-pivot-workspace",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Workspace for Kupola PIVOT, a protocol-first, intent-driven runtime for secure AI-native web applications.",
   "type": "module",
@@ -10,6 +10,7 @@
   "scripts": {
     "check": "node --check packages/core/src/index.js && node --check packages/core/src/capability-registry.js && node --check packages/protocol/src/index.js && node --check packages/policy/src/index.js && node --check packages/orchestrator/src/index.js && node --check packages/ui/src/index.js && node --check test/smoke.mjs",
     "smoke": "node test/smoke.mjs",
+    "example:his-basic": "node examples/his-basic/index.mjs",
     "test": "npm run check && npm run smoke"
   },
   "engines": {
