@@ -103,8 +103,16 @@ if (!preview.ok || !preview.data.requiresConfirmation) {
   throw new Error('Expected command preview to require confirmation.');
 }
 
+if (!Array.isArray(preview.explain.timeline) || preview.explain.timeline.length < 3) {
+  throw new Error('Expected command preview to include an explain timeline.');
+}
+
 if (!result.ok || result.data.name !== 'Branch C') {
   throw new Error('Expected command execution to succeed.');
+}
+
+if (!Array.isArray(result.explain.timeline) || !result.explain.timeline.some((step) => step.stage === 'execution')) {
+  throw new Error('Expected command execution to include an execution timeline step.');
 }
 
 if (runtime.getAuditEvents().length !== 1) {
@@ -181,12 +189,20 @@ if (!planResult.ok || planResult.data.nodes.length !== 2) {
   throw new Error('Expected plan execution to run both nodes.');
 }
 
+if (!Array.isArray(planResult.explain.timeline) || !planResult.explain.timeline.some((step) => step.stage === 'plan.node')) {
+  throw new Error('Expected plan execution to include node timeline steps.');
+}
+
 if (failingPlanResult.ok || failingPlanResult.data.compensations.length !== 1) {
   throw new Error('Expected failed plan to run one compensation.');
 }
 
 if (!failingPlanResult.data.compensations[0].result.ok) {
   throw new Error('Expected plan compensation to succeed.');
+}
+
+if (!failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.compensation')) {
+  throw new Error('Expected failed plan timeline to include compensation steps.');
 }
 
 console.log('PIVOT smoke test passed.');

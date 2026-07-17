@@ -143,6 +143,8 @@ const planResult = await runtime.executePlan(plan, context);
 
 Plan nodes may define `compensate` so successful steps can be reversed when a later step fails.
 
+Every command and plan result can include `explain.timeline`, a UI-ready list of validation, policy, confirmation, execution, failure, and compensation steps.
+
 PIVOT validates the command, checks the registered capability, evaluates policies, requests confirmation when needed, executes the host-project function, and records an audit event.
 
 See:

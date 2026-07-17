@@ -25,6 +25,19 @@ export interface CapabilityRegistry {
   size(): number;
 }
 
+export interface PivotExplainTimelineStep {
+  stage: string;
+  status: string;
+  message: string;
+  timestamp: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface PivotExplain {
+  timeline?: PivotExplainTimelineStep[];
+  [key: string]: unknown;
+}
+
 export function createCapabilityRegistry(options?: {
   onDuplicate?: 'replace' | 'error';
 }): CapabilityRegistry;

@@ -49,22 +49,41 @@ export function createPivotRuntime(options = {}) {
   };
 
   const previewCommand = async (command, context = {}) => {
+    const timeline = [];
     const validation = registry.validateCommand(command);
     const capability = registry.get(command?.capability);
 
     if (!validation.valid) {
+      timeline.push(createTimelineStep('validation', 'failed', 'Command validation failed.', {
+        errors: validation.errors,
+        warnings: validation.warnings
+      }));
+
       return createResult({
         ok: false,
         message: 'Command validation failed.',
         explain: {
           errors: validation.errors,
           warnings: validation.warnings,
-          requiresConfirmation: false
+          requiresConfirmation: false,
+          timeline
         }
       });
     }
 
+    timeline.push(createTimelineStep('validation', 'passed', 'Command validation passed.', {
+      warnings: validation.warnings
+    }));
+
     const policyDecision = await policyPipeline.evaluate({ command, capability, context });
+    timeline.push(createTimelineStep('policy', policyDecision.decision, policyDecision.reason, {
+      policy: policyDecision
+    }));
+
+    const requiresConfirmation = needsConfirmation(command, capability, policyDecision);
+    timeline.push(createTimelineStep('preview', 'ready', 'Command preview is ready.', {
+      requiresConfirmation
+    }));
 
     return createResult({
       ok: policyDecision.decision !== PolicyDecision.DENY && policyDecision.decision !== PolicyDecision.ESCALATE,
@@ -72,21 +91,28 @@ export function createPivotRuntime(options = {}) {
         command,
         capability: toCapabilityPreview(capability),
         policy: policyDecision,
-        requiresConfirmation: needsConfirmation(command, capability, policyDecision)
+        requiresConfirmation
       },
       message: policyDecision.reason,
       explain: {
         policy: policyDecision,
-        warnings: validation.warnings
+        warnings: validation.warnings,
+        timeline
       }
     });
   };
 
   const executeCommand = async (command, context = {}) => {
+    const timeline = [];
     const validation = registry.validateCommand(command);
     const capability = registry.get(command?.capability);
 
     if (!validation.valid) {
+      timeline.push(createTimelineStep('validation', 'failed', 'Command validation failed.', {
+        errors: validation.errors,
+        warnings: validation.warnings
+      }));
+
       const audit = emitAudit({
         actor: context.actor,
         intent: command?.intent,
@@ -100,12 +126,19 @@ export function createPivotRuntime(options = {}) {
       return createResult({
         ok: false,
         message: 'Command validation failed.',
-        explain: { errors: validation.errors, warnings: validation.warnings },
+        explain: { errors: validation.errors, warnings: validation.warnings, timeline },
         audit
       });
     }
 
+    timeline.push(createTimelineStep('validation', 'passed', 'Command validation passed.', {
+      warnings: validation.warnings
+    }));
+
     const policyDecision = await policyPipeline.evaluate({ command, capability, context });
+    timeline.push(createTimelineStep('policy', policyDecision.decision, policyDecision.reason, {
+      policy: policyDecision
+    }));
 
     if (policyDecision.decision === PolicyDecision.DENY || policyDecision.decision === PolicyDecision.ESCALATE) {
       const audit = emitAudit({
@@ -121,16 +154,21 @@ export function createPivotRuntime(options = {}) {
       return createResult({
         ok: false,
         message: policyDecision.reason,
-        explain: { policy: policyDecision },
+        explain: { policy: policyDecision, timeline },
         audit
       });
     }
 
-    const confirmation = needsConfirmation(command, capability, policyDecision)
+    const requiresConfirmation = needsConfirmation(command, capability, policyDecision);
+    timeline.push(createTimelineStep('confirmation', requiresConfirmation ? 'required' : 'skipped', requiresConfirmation ? 'Confirmation is required.' : 'Confirmation is not required.'));
+
+    const confirmation = requiresConfirmation
       ? await ui.confirm({ command, capability, policy: policyDecision, context })
       : true;
 
     if (!confirmation) {
+      timeline.push(createTimelineStep('confirmation', 'rejected', 'User rejected command confirmation.'));
+
       const audit = emitAudit({
         actor: context.actor,
         intent: command.intent,
@@ -144,12 +182,18 @@ export function createPivotRuntime(options = {}) {
       return createResult({
         ok: false,
         message: 'Command confirmation was rejected.',
-        explain: { policy: policyDecision },
+        explain: { policy: policyDecision, timeline },
         audit
       });
     }
 
+    if (requiresConfirmation) {
+      timeline.push(createTimelineStep('confirmation', 'confirmed', 'User confirmed command execution.'));
+    }
+
     if (typeof capability.execute !== 'function') {
+      timeline.push(createTimelineStep('execution', 'failed', 'Capability has no execute function.'));
+
       const audit = emitAudit({
         actor: context.actor,
         intent: command.intent,
@@ -163,13 +207,17 @@ export function createPivotRuntime(options = {}) {
       return createResult({
         ok: false,
         message: 'Capability is not executable.',
-        explain: { capability: capability.name },
+        explain: { capability: capability.name, timeline },
         audit
       });
     }
 
     try {
       const data = await capability.execute({ command, params: command.params, context });
+      timeline.push(createTimelineStep('execution', 'executed', 'Command executed.', {
+        capability: capability.name
+      }));
+
       const audit = emitAudit({
         actor: context.actor,
         intent: command.intent,
@@ -184,10 +232,15 @@ export function createPivotRuntime(options = {}) {
         ok: true,
         data,
         message: 'Command executed.',
-        explain: { capability: capability.name, policy: policyDecision },
+        explain: { capability: capability.name, policy: policyDecision, timeline },
         audit
       });
     } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      timeline.push(createTimelineStep('execution', 'failed', 'Command execution failed.', {
+        error: reason
+      }));
+
       const audit = emitAudit({
         actor: context.actor,
         intent: command.intent,
@@ -195,26 +248,29 @@ export function createPivotRuntime(options = {}) {
         capability: command.capability,
         decision: policyDecision.decision,
         status: CommandStatus.FAILED,
-        reason: error instanceof Error ? error.message : String(error)
+        reason
       });
 
       return createResult({
         ok: false,
         message: 'Command execution failed.',
-        explain: { error: audit.reason },
+        explain: { error: audit.reason, timeline },
         audit
       });
     }
   };
 
   const executePlan = async (plan, context = {}, options = {}) => {
+    const timeline = [];
     const validation = validatePlan(plan);
 
     if (!validation.valid) {
+      timeline.push(createTimelineStep('plan.validation', 'failed', 'Plan validation failed.', validation));
+
       return createResult({
         ok: false,
         message: 'Plan validation failed.',
-        explain: validation,
+        explain: { ...validation, timeline },
         data: {
           plan,
           nodes: []
@@ -227,8 +283,17 @@ export function createPivotRuntime(options = {}) {
     const orderedNodes = getExecutionOrder(plan);
     const nodeResults = [];
     const resultsByNodeId = {};
+    timeline.push(createTimelineStep('plan.validation', 'passed', 'Plan validation passed.', {
+      warnings: validation.warnings,
+      nodes: orderedNodes.length
+    }));
 
     for (const node of orderedNodes) {
+      timeline.push(createTimelineStep('plan.node', 'started', `Plan node started: ${node.id}`, {
+        nodeId: node.id,
+        capability: node.capability
+      }));
+
       const capability = registry.get(node.capability);
 
       if (!capability) {
@@ -240,13 +305,19 @@ export function createPivotRuntime(options = {}) {
 
         nodeResults.push({ node, command: null, result });
         resultsByNodeId[node.id] = result;
+        timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
+          nodeId: node.id,
+          capability: node.capability,
+          reason: result.message
+        }));
 
         if (stopOnError) {
           const compensations = compensateOnError
             ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
             : [];
 
-          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations);
+          addCompensationTimeline(timeline, compensations);
+          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
         }
 
         continue;
@@ -275,18 +346,26 @@ export function createPivotRuntime(options = {}) {
 
       nodeResults.push({ node, command, result });
       resultsByNodeId[node.id] = result;
+      timeline.push(createTimelineStep('plan.node', result.ok ? 'executed' : 'failed', `Plan node ${result.ok ? 'executed' : 'failed'}: ${node.id}`, {
+        nodeId: node.id,
+        capability: node.capability,
+        commandId: command.id,
+        reason: result.message
+      }));
 
       if (!result.ok && stopOnError) {
         const compensations = compensateOnError
           ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
           : [];
 
-        return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations);
+        addCompensationTimeline(timeline, compensations);
+        return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
       }
     }
 
     const ok = nodeResults.every((item) => item.result.ok);
-    return createPlanResult(plan, nodeResults, ok, ok ? 'Plan executed.' : 'Plan completed with failures.');
+    timeline.push(createTimelineStep('plan.execution', ok ? 'executed' : 'failed', ok ? 'Plan executed.' : 'Plan completed with failures.'));
+    return createPlanResult(plan, nodeResults, ok, ok ? 'Plan executed.' : 'Plan completed with failures.', [], timeline);
   };
 
   const compensatePlan = async ({ plan, nodeResults, context, resultsByNodeId, failedNode }) => {
@@ -404,7 +483,7 @@ function toCapabilityPreview(capability) {
   return preview;
 }
 
-function createPlanResult(plan, nodeResults, ok, message, compensations = []) {
+function createPlanResult(plan, nodeResults, ok, message, compensations = [], timeline = []) {
   return createResult({
     ok,
     message,
@@ -418,7 +497,28 @@ function createPlanResult(plan, nodeResults, ok, message, compensations = []) {
       executedNodes: nodeResults.length,
       failedNodes: nodeResults.filter((item) => !item.result.ok).length,
       compensationNodes: compensations.length,
-      failedCompensations: compensations.filter((item) => !item.result.ok).length
+      failedCompensations: compensations.filter((item) => !item.result.ok).length,
+      timeline
     }
   });
+}
+
+function addCompensationTimeline(timeline, compensations) {
+  for (const compensation of compensations) {
+    timeline.push(createTimelineStep('plan.compensation', compensation.result.ok ? 'executed' : 'failed', `Plan compensation ${compensation.result.ok ? 'executed' : 'failed'}: ${compensation.node.id}`, {
+      nodeId: compensation.node.id,
+      commandId: compensation.command?.id,
+      reason: compensation.result.message
+    }));
+  }
+}
+
+function createTimelineStep(stage, status, message, metadata = {}) {
+  return {
+    stage,
+    status,
+    message,
+    timestamp: new Date().toISOString(),
+    metadata
+  };
 }

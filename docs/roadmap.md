@@ -49,6 +49,12 @@
 - Return compensation records in plan results.
 - Keep compensation inside the same validation, policy, confirmation, execution, and audit pipeline.
 
+## 0.1.7 Explain Timeline
+
+- Add `explain.timeline` to command preview and execution results.
+- Add plan-level timeline steps for validation, node execution, and compensation.
+- Keep timeline as plain data so UI packages can render it later without binding core to a component library.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

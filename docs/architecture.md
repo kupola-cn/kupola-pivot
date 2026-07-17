@@ -91,3 +91,17 @@ The default behavior stops on the first failed node. Apps can pass `{ stopOnErro
 Plan nodes can define a `compensate` capability. When a later node fails and `compensateOnError` is enabled, PIVOT runs compensation commands for previously successful nodes in reverse execution order.
 
 Compensation is not a database transaction. It is a business-level recovery hook. Each compensation command still goes through validation, policy checks, confirmation, execution, result wrapping, and audit events.
+
+## Explain Timeline
+
+Command and plan results include an optional `explain.timeline` array. The timeline is designed for UI surfaces that need to show why an operation was allowed, blocked, confirmed, executed, failed, or compensated.
+
+Typical stages include:
+
+- `validation`
+- `policy`
+- `confirmation`
+- `execution`
+- `plan.validation`
+- `plan.node`
+- `plan.compensation`
