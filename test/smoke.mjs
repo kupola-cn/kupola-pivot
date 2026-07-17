@@ -50,12 +50,19 @@ if (command.id === secondCommand.id) {
 }
 
 const validation = runtime.validateCommand(command);
+const preview = await runtime.previewCommand(command, {
+  actor: { id: 'user-1', permissions: ['organization:create'] }
+});
 const result = await runtime.executeCommand(command, {
   actor: { id: 'user-1', permissions: ['organization:create'] }
 });
 
 if (!validation.valid) {
   throw new Error(`Expected valid command, got: ${validation.errors.join('; ')}`);
+}
+
+if (!preview.ok || !preview.data.requiresConfirmation) {
+  throw new Error('Expected command preview to require confirmation.');
 }
 
 if (!result.ok || result.data.name !== 'Branch C') {
@@ -70,8 +77,16 @@ const blockedResult = await runtime.executeCommand(command, {
   actor: { id: 'user-2', permissions: [] }
 });
 
+const blockedPreview = await runtime.previewCommand(command, {
+  actor: { id: 'user-2', permissions: [] }
+});
+
 if (blockedResult.ok || blockedResult.audit.status !== 'blocked') {
   throw new Error('Expected permission policy to block unauthorized command.');
+}
+
+if (blockedPreview.ok) {
+  throw new Error('Expected preview to show unauthorized command as blocked.');
 }
 
 console.log('PIVOT smoke test passed.');

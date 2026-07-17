@@ -22,6 +22,12 @@
 - Add built-in frontend policy helpers for permission hints, risk levels, sensitive resources, and backend status mapping.
 - Keep backend authorization as the final security boundary.
 
+## 0.1.3 Execution Preview
+
+- Add `runtime.previewCommand(command, context)`.
+- Return capability, policy result, warnings, and confirmation requirement before execution.
+- Support UI drawers/modals that explain what will happen before calling project APIs.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

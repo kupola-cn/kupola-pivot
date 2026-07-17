@@ -35,6 +35,12 @@ export interface PivotRuntime {
   getCapability(name: string): PivotCapability | null;
   listCapabilities(filter?: { resource?: string; action?: string; permission?: string }): PivotCapability[];
   validateCommand(command: PivotCommand): ValidationResult;
+  previewCommand(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<{
+    command: PivotCommand;
+    capability: Omit<PivotCapability, 'execute'>;
+    policy: unknown;
+    requiresConfirmation: boolean;
+  }>>;
   executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<TData>>;
   getAuditEvents(): PivotAuditEvent[];
 }

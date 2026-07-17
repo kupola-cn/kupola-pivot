@@ -123,6 +123,18 @@ if (!result.ok) {
 }
 ```
 
+Use `previewCommand` when UI needs to show a confirmation or explain why an operation is blocked before execution:
+
+```js
+const preview = await runtime.previewCommand(command, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:create']
+  },
+  api
+});
+```
+
 PIVOT validates the command, checks the registered capability, evaluates policies, requests confirmation when needed, executes the host-project function, and records an audit event.
 
 See:

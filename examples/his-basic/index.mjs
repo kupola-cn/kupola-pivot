@@ -70,6 +70,7 @@ const deleteRole = createCommand({
 });
 
 console.log('query roles:', await runtime.executeCommand(queryRoles, adminContext));
+console.log('create branch preview:', await runtime.previewCommand(createBranch, adminContext));
 console.log('create branch:', await runtime.executeCommand(createBranch, adminContext));
 console.log('blocked delete:', await runtime.executeCommand(deleteRole, limitedContext));
 console.log('backend 403:', await runtime.executeCommand(deleteRole, adminContext));

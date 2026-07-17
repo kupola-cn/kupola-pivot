@@ -51,6 +51,16 @@ if (!validation.valid) {
 }
 ```
 
+For UI preview before execution:
+
+```js
+const preview = await runtime.previewCommand(command, context);
+
+if (preview.ok && preview.data.requiresConfirmation) {
+  // Show a confirmation drawer or modal before executing.
+}
+```
+
 ## Why This Matters
 
 This mechanism gives PIVOT a hard boundary:

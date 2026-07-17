@@ -67,6 +67,40 @@ export function createPivotRuntime(options = {}) {
       return registry.validateCommand(command);
     },
 
+    async previewCommand(command, context = {}) {
+      const validation = registry.validateCommand(command);
+      const capability = registry.get(command?.capability);
+
+      if (!validation.valid) {
+        return createResult({
+          ok: false,
+          message: 'Command validation failed.',
+          explain: {
+            errors: validation.errors,
+            warnings: validation.warnings,
+            requiresConfirmation: false
+          }
+        });
+      }
+
+      const policyDecision = await policyPipeline.evaluate({ command, capability, context });
+
+      return createResult({
+        ok: policyDecision.decision !== PolicyDecision.DENY && policyDecision.decision !== PolicyDecision.ESCALATE,
+        data: {
+          command,
+          capability: toCapabilityPreview(capability),
+          policy: policyDecision,
+          requiresConfirmation: needsConfirmation(command, capability, policyDecision)
+        },
+        message: policyDecision.reason,
+        explain: {
+          policy: policyDecision,
+          warnings: validation.warnings
+        }
+      });
+    },
+
     async executeCommand(command, context = {}) {
       const validation = registry.validateCommand(command);
       const capability = registry.get(command?.capability);
@@ -208,4 +242,9 @@ function needsConfirmation(command, capability, policyDecision) {
   }
 
   return command.risk === RiskLevel.HIGH || command.risk === RiskLevel.CRITICAL;
+}
+
+function toCapabilityPreview(capability) {
+  const { execute, ...preview } = capability;
+  return preview;
 }
