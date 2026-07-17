@@ -6,6 +6,8 @@ import {
   createPermissionPolicy,
   createPivotRuntime,
   getExecutionOrder,
+  renderResultToHTML,
+  renderTimelineToHTML,
   validatePlan
 } from '@kupola/pivot';
 
@@ -203,6 +205,19 @@ if (!failingPlanResult.data.compensations[0].result.ok) {
 
 if (!failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.compensation')) {
   throw new Error('Expected failed plan timeline to include compensation steps.');
+}
+
+const timelineHTML = renderTimelineToHTML(result.explain.timeline);
+const resultHTML = renderResultToHTML(failingPlanResult);
+
+if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed')) {
+  throw new Error('Expected UI renderers to produce timeline and result markup.');
+}
+
+const escapedHTML = renderTimelineToHTML([{ stage: '<script>', status: 'failed', message: '<img src=x onerror=alert(1)>' }]);
+
+if (escapedHTML.includes('<script>') || escapedHTML.includes('<img')) {
+  throw new Error('Expected UI renderer to escape HTML content.');
 }
 
 console.log('PIVOT smoke test passed.');

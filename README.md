@@ -145,6 +145,12 @@ Plan nodes may define `compensate` so successful steps can be reversed when a la
 
 Every command and plan result can include `explain.timeline`, a UI-ready list of validation, policy, confirmation, execution, failure, and compensation steps.
 
+`@kupola/pivot-ui` also provides small rendering helpers:
+
+```js
+const html = renderResultToHTML(result);
+```
+
 PIVOT validates the command, checks the registered capability, evaluates policies, requests confirmation when needed, executes the host-project function, and records an audit event.
 
 See:

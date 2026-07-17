@@ -105,3 +105,5 @@ Typical stages include:
 - `plan.validation`
 - `plan.node`
 - `plan.compensation`
+
+`@kupola/pivot-ui` can render timelines and results as escaped HTML strings or mount them into DOM elements. The renderer is intentionally small and framework-neutral.

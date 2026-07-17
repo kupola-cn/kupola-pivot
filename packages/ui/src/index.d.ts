@@ -17,3 +17,19 @@ export interface TrustedUIAdapter {
 }
 
 export function createTrustedUIAdapter(adapter?: Partial<TrustedUIAdapter>): TrustedUIAdapter;
+export function renderTimelineToHTML(timeline?: unknown[], options?: {
+  className?: string;
+  emptyText?: string;
+}): string;
+export function renderResultToHTML(result: PivotResult, options?: {
+  className?: string;
+  includeTimeline?: boolean;
+}): string;
+export function mountTimeline<TElement extends Element>(target: string | TElement, timeline?: unknown[], options?: {
+  className?: string;
+  emptyText?: string;
+}): TElement | Element;
+export function mountResult<TElement extends Element>(target: string | TElement, result: PivotResult, options?: {
+  className?: string;
+  includeTimeline?: boolean;
+}): TElement | Element;

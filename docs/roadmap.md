@@ -55,6 +55,14 @@
 - Add plan-level timeline steps for validation, node execution, and compensation.
 - Keep timeline as plain data so UI packages can render it later without binding core to a component library.
 
+## 0.1.8 Timeline UI Renderer
+
+- Add `renderTimelineToHTML`.
+- Add `renderResultToHTML`.
+- Add `mountTimeline`.
+- Add `mountResult`.
+- Escape rendered content by default.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

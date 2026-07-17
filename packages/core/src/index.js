@@ -26,7 +26,7 @@ export {
   mapHttpStatusToPolicy
 } from '@kupola/pivot-policy';
 export { addEdge, addNode, createPlan, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
-export { createTrustedUIAdapter } from '@kupola/pivot-ui';
+export { createTrustedUIAdapter, mountResult, mountTimeline, renderResultToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
 import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult } from '@kupola/pivot-protocol';
