@@ -17,6 +17,16 @@ const runtime = createPivotRuntime({
 });
 
 runtime.registerCapability({
+  name: 'organization.query',
+  resource: 'organization',
+  action: ActionType.QUERY,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => ({ id: 'group', name: 'Group' })
+});
+
+runtime.registerCapability({
   name: 'organization.create',
   resource: 'organization',
   action: ActionType.CREATE,
@@ -96,16 +106,30 @@ const plan = createPlan({
   intent: 'Create a HIS organization branch.',
   nodes: [
     { id: 'validate-parent', capability: 'organization.query' },
-    { id: 'create-branch', capability: 'organization.create' }
+    {
+      id: 'create-branch',
+      capability: 'organization.create',
+      params: { name: 'Branch E', parentId: 'group' }
+    }
   ],
   edges: [{ from: 'validate-parent', to: 'create-branch' }]
 });
 
 const planValidation = validatePlan(plan);
 const order = getExecutionOrder(plan);
+const planResult = await runtime.executePlan(plan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
 
 if (!planValidation.valid || order.map((node) => node.id).join(',') !== 'validate-parent,create-branch') {
   throw new Error('Expected plan validation and execution order to succeed.');
+}
+
+if (!planResult.ok || planResult.data.nodes.length !== 2) {
+  throw new Error('Expected plan execution to run both nodes.');
 }
 
 console.log('PIVOT smoke test passed.');

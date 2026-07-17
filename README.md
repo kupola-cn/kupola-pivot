@@ -135,6 +135,12 @@ const preview = await runtime.previewCommand(command, {
 });
 ```
 
+Use `executePlan` when a business task needs multiple ordered capabilities:
+
+```js
+const planResult = await runtime.executePlan(plan, context);
+```
+
 PIVOT validates the command, checks the registered capability, evaluates policies, requests confirmation when needed, executes the host-project function, and records an audit event.
 
 See:

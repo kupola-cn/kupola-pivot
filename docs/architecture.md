@@ -79,3 +79,9 @@ The orchestrator package provides basic graph validation:
 - execution order derivation for directed acyclic plans
 
 This keeps early workflow modeling practical without forcing a visual workflow editor too early.
+
+## Plan Execution
+
+`executePlan(plan, context)` runs a validated directed acyclic plan in dependency order. Each node resolves a registered capability and is executed through the same command pipeline as `executeCommand`, including validation, policy checks, confirmation, execution, result wrapping, and audit events.
+
+The default behavior stops on the first failed node. Apps can pass `{ stopOnError: false }` to continue and collect all node results.

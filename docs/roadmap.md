@@ -35,6 +35,13 @@
 - Add `getExecutionOrder(plan)`.
 - Detect duplicate nodes, invalid edges, and cycles.
 
+## 0.1.5 Flow Runner
+
+- Add `runtime.executePlan(plan, context, options)`.
+- Execute plan nodes through the same guarded command pipeline as single commands.
+- Return per-node command/result records.
+- Stop on first failure by default, with optional continue-on-error behavior.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

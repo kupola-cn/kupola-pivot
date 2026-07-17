@@ -2,6 +2,7 @@ import {
   ActionType,
   RiskLevel,
   createCommand,
+  createPlan,
   createPermissionPolicy,
   createPivotRuntime,
   mapHttpStatusToPolicy
@@ -69,9 +70,27 @@ const deleteRole = createCommand({
   }
 });
 
+const createBranchPlan = createPlan({
+  intent: '校验集团并创建分机构D',
+  nodes: [
+    {
+      id: 'query-group',
+      capability: 'organization.query',
+      params: { id: 'group' }
+    },
+    {
+      id: 'create-branch-d',
+      capability: 'organization.create',
+      params: { name: '分机构D', parentId: 'group' }
+    }
+  ],
+  edges: [{ from: 'query-group', to: 'create-branch-d' }]
+});
+
 console.log('query roles:', await runtime.executeCommand(queryRoles, adminContext));
 console.log('create branch preview:', await runtime.previewCommand(createBranch, adminContext));
 console.log('create branch:', await runtime.executeCommand(createBranch, adminContext));
+console.log('create branch plan:', await runtime.executePlan(createBranchPlan, adminContext));
 console.log('blocked delete:', await runtime.executeCommand(deleteRole, limitedContext));
 console.log('backend 403:', await runtime.executeCommand(deleteRole, adminContext));
 console.log('audit count:', runtime.getAuditEvents().length);
@@ -85,6 +104,18 @@ function registerHisCapabilities(targetRuntime) {
     permissions: ['role:query'],
     paramsSchema: {},
     execute: async ({ context }) => context.api.queryRoles()
+  });
+
+  targetRuntime.registerCapability({
+    name: 'organization.query',
+    resource: 'organization',
+    action: ActionType.QUERY,
+    risk: RiskLevel.LOW,
+    permissions: ['organization:create'],
+    paramsSchema: {
+      id: { type: 'string', required: true }
+    },
+    execute: async ({ params, context }) => context.api.queryOrganization(params.id)
   });
 
   targetRuntime.registerCapability({
@@ -155,6 +186,10 @@ function createHisApi() {
 
       organizations.push(organization);
       return organization;
+    },
+
+    async queryOrganization(id) {
+      return organizations.find((item) => item.id === id) ?? null;
     },
 
     async deleteRole(id) {

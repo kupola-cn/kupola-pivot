@@ -135,3 +135,13 @@ const runtime = createPivotRuntime({
 ```
 
 These policies are interaction guardrails. Backend APIs must still enforce real authorization.
+
+## Plan Execution
+
+For multi-step business work, register each step as a capability and build a plan:
+
+```js
+const result = await runtime.executePlan(plan, context);
+```
+
+Each node is converted into a command and executed through the same validation, policy, confirmation, execution, and audit path as `executeCommand`.

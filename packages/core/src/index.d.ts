@@ -12,6 +12,7 @@ import type {
   ValidationResult
 } from '@kupola/pivot-protocol';
 import type { PivotPolicy } from '@kupola/pivot-policy';
+import type { PivotPlan, PivotPlanNode } from '@kupola/pivot-orchestrator';
 import type { TrustedUIAdapter } from '@kupola/pivot-ui';
 
 export interface CapabilityRegistry {
@@ -42,6 +43,17 @@ export interface PivotRuntime {
     requiresConfirmation: boolean;
   }>>;
   executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<TData>>;
+  executePlan(plan: PivotPlan, context?: PivotExecutionContext, options?: {
+    stopOnError?: boolean;
+  }): Promise<PivotResult<{
+    plan: PivotPlan;
+    nodes: Array<{
+      node: PivotPlanNode;
+      command: PivotCommand | null;
+      result: PivotResult;
+    }>;
+    status: 'executed' | 'failed';
+  }>>;
   getAuditEvents(): PivotAuditEvent[];
 }
 
