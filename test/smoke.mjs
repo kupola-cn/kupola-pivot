@@ -1,6 +1,13 @@
-import { ActionType, RiskLevel, createCommand, createPivotRuntime } from '@kupola/pivot';
+import {
+  ActionType,
+  RiskLevel,
+  createCommand,
+  createPermissionPolicy,
+  createPivotRuntime
+} from '@kupola/pivot';
 
 const runtime = createPivotRuntime({
+  policies: [createPermissionPolicy()],
   ui: {
     confirm: async () => true
   }
@@ -11,6 +18,7 @@ runtime.registerCapability({
   resource: 'organization',
   action: ActionType.CREATE,
   risk: RiskLevel.MEDIUM,
+  permissions: ['organization:create'],
   paramsSchema: {
     name: { type: 'string', required: true },
     parentId: { type: 'string', required: true }
@@ -29,7 +37,9 @@ const command = createCommand({
 });
 
 const validation = runtime.validateCommand(command);
-const result = await runtime.executeCommand(command, { actor: { id: 'user-1' } });
+const result = await runtime.executeCommand(command, {
+  actor: { id: 'user-1', permissions: ['organization:create'] }
+});
 
 if (!validation.valid) {
   throw new Error(`Expected valid command, got: ${validation.errors.join('; ')}`);
@@ -41,6 +51,14 @@ if (!result.ok || result.data.name !== 'Branch C') {
 
 if (runtime.getAuditEvents().length !== 1) {
   throw new Error('Expected exactly one audit event.');
+}
+
+const blockedResult = await runtime.executeCommand(command, {
+  actor: { id: 'user-2', permissions: [] }
+});
+
+if (blockedResult.ok || blockedResult.audit.status !== 'blocked') {
+  throw new Error('Expected permission policy to block unauthorized command.');
 }
 
 console.log('PIVOT smoke test passed.');

@@ -42,6 +42,17 @@ Backend response: 403
 
 The frontend may block early when it already knows the user lacks permission, but it must still handle backend 401/403 as the final source of truth.
 
+## Built-In Frontend Policies
+
+PIVOT includes policy helpers for common interaction checks:
+
+- permission hints
+- risk-level confirmation
+- sensitive resource confirmation/escalation/deny
+- backend status mapping for `401`, `403`, and `409`
+
+These helpers are meant to improve UX and reduce accidental misuse. They do not prove access rights. A malicious user can bypass frontend code, so the backend must reject unauthorized requests independently.
+
 ## Runtime Execution Guardrails
 
 The PIVOT runtime should execute commands only after:

@@ -15,6 +15,13 @@
 - Implement result preview and confirmation hooks.
 - Add HIS-style example for query, create, update, delete, and organization hierarchy operations.
 
+## 0.1.1 Package Hardening
+
+- Add TypeScript declaration files for public packages.
+- Add package `types` exports.
+- Add built-in frontend policy helpers for permission hints, risk levels, sensitive resources, and backend status mapping.
+- Keep backend authorization as the final security boundary.
+
 ## 0.3 Workflow Preview
 
 - Add node-based flow definitions for complex business orchestration.

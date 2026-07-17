@@ -52,6 +52,79 @@ examples/             Future examples, including HIS-style business apps
 
 This repository is in early architecture and foundation work. The first milestone is to define stable contracts before implementing production behavior.
 
+## Install
+
+```bash
+npm install @kupola/pivot
+```
+
+You can also install lower-level packages directly:
+
+```bash
+npm install @kupola/pivot-protocol @kupola/pivot-policy
+```
+
+## Quick Example
+
+```js
+import {
+  ActionType,
+  RiskLevel,
+  createCommand,
+  createPermissionPolicy,
+  createPivotRuntime
+} from '@kupola/pivot';
+
+const runtime = createPivotRuntime({
+  policies: [createPermissionPolicy()],
+  ui: {
+    confirm: async () => true
+  }
+});
+
+runtime.registerCapability({
+  name: 'organization.create',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.MEDIUM,
+  permissions: ['organization:create'],
+  requiresConfirmation: true,
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  execute: async ({ params, context }) => {
+    return context.api.createOrganization(params);
+  }
+});
+
+const command = createCommand({
+  intent: 'Create Branch C under the group.',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  capability: 'organization.create',
+  risk: RiskLevel.MEDIUM,
+  params: {
+    name: 'Branch C',
+    parentId: 'group'
+  }
+});
+
+const result = await runtime.executeCommand(command, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:create']
+  },
+  api
+});
+
+if (!result.ok) {
+  console.warn(result.message);
+}
+```
+
+PIVOT validates the command, checks the registered capability, evaluates policies, requests confirmation when needed, executes the host-project function, and records an audit event.
+
 See:
 
 - [Architecture](docs/architecture.md)

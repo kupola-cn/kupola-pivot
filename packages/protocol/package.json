@@ -1,12 +1,16 @@
 {
   "name": "@kupola/pivot-protocol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Protocol contracts for Kupola PIVOT commands, capabilities, resources, and results.",
   "type": "module",
   "main": "src/index.js",
   "module": "src/index.js",
+  "types": "src/index.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    }
   },
   "files": [
     "src/"

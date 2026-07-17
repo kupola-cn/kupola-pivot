@@ -13,7 +13,18 @@ export {
   validateCommand,
   validateParams
 } from '@kupola/pivot-protocol';
-export { PolicyDecision, allow, confirm, createPolicyPipeline, deny, escalate } from '@kupola/pivot-policy';
+export {
+  PolicyDecision,
+  allow,
+  confirm,
+  createPermissionPolicy,
+  createPolicyPipeline,
+  createRiskPolicy,
+  createSensitiveResourcePolicy,
+  deny,
+  escalate,
+  mapHttpStatusToPolicy
+} from '@kupola/pivot-policy';
 export { addEdge, addNode, createPlan } from '@kupola/pivot-orchestrator';
 export { createTrustedUIAdapter } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';

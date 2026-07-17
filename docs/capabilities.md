@@ -95,3 +95,33 @@ if (!result.ok) {
 ```
 
 When the backend returns `401` or `403`, the capability should return or throw that error. PIVOT must show the rejection and record it in the audit trail.
+
+## Built-In Policies
+
+PIVOT currently provides a small set of frontend policy helpers:
+
+- `createPermissionPolicy()` checks capability permission hints against `context.permissions` or `context.actor.permissions`.
+- `createRiskPolicy()` asks for confirmation or escalation based on risk level.
+- `createSensitiveResourcePolicy()` marks selected resources/actions as confirmation, escalation, or deny targets.
+- `mapHttpStatusToPolicy()` maps backend `401`, `403`, and `409` responses into policy-style results.
+
+Example:
+
+```js
+const runtime = createPivotRuntime({
+  policies: [
+    createPermissionPolicy(),
+    createRiskPolicy({
+      confirmAt: ['high'],
+      escalateAt: ['critical']
+    }),
+    createSensitiveResourcePolicy({
+      resources: ['user', 'role', 'menu'],
+      actions: ['delete', 'update'],
+      decision: 'confirm'
+    })
+  ]
+});
+```
+
+These policies are interaction guardrails. Backend APIs must still enforce real authorization.
