@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- AI workflow integration example covering structured-output validation feedback, plan preview, approval, execution, compensation, and audit sink export.
+- Smoke coverage for AI workflow integration with approval gates, compensation records, UI renderers, and audit sink redaction.
+
+### Changed
+
+- Command execution audit events now include command metadata in addition to context audit metadata and event metadata, with sensitive fields still redacted before storage or sink delivery.
+
 ## 0.2.14 - Plan Node Contracts
 
 ### Added

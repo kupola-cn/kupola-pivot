@@ -51,7 +51,7 @@ export function createPivotRuntime(options = {}) {
     const event = createAuditEvent({
       ...eventInput,
       metadata: sanitizeAuditMetadata(
-        mergeAuditMetadata(eventInput.metadata, auditContext.auditMetadata),
+        mergeAuditMetadata(auditContext.commandMetadata, auditContext.auditMetadata, eventInput.metadata),
         DEFAULT_AUDIT_SENSITIVE_NAMES
       )
     });
@@ -122,6 +122,10 @@ export function createPivotRuntime(options = {}) {
     const executionOptions = normalizeExecutionOptions(options);
     const validation = registry.validateCommand(command);
     const capability = registry.get(command?.capability);
+    const auditContext = {
+      ...context,
+      commandMetadata: command?.metadata
+    };
 
     if (!validation.valid) {
       timeline.push(createTimelineStep('validation', 'failed', 'Command validation failed.', {
@@ -137,7 +141,7 @@ export function createPivotRuntime(options = {}) {
         decision: PolicyDecision.DENY,
         status: CommandStatus.REJECTED,
         reason: validation.errors.join('; ')
-      }, context);
+      }, auditContext);
 
       return createResult({
         ok: false,
@@ -165,7 +169,7 @@ export function createPivotRuntime(options = {}) {
         decision: policyDecision.decision,
         status: CommandStatus.BLOCKED,
         reason: policyDecision.reason
-      }, context);
+      }, auditContext);
 
       return createResult({
         ok: false,
@@ -193,7 +197,7 @@ export function createPivotRuntime(options = {}) {
         decision: PolicyDecision.CONFIRM,
         status: CommandStatus.REJECTED,
         reason: 'User rejected command confirmation.'
-      }, context);
+      }, auditContext);
 
       return createResult({
         ok: false,
@@ -218,7 +222,7 @@ export function createPivotRuntime(options = {}) {
         decision: policyDecision.decision,
         status: CommandStatus.FAILED,
         reason: 'Capability has no execute function.'
-      }, context);
+      }, auditContext);
 
       return createResult({
         ok: false,
@@ -254,7 +258,7 @@ export function createPivotRuntime(options = {}) {
           decision: policyDecision.decision,
           status: CommandStatus.EXECUTED,
           reason: message
-        }, context);
+        }, auditContext);
 
         return createResult({
           ok: true,
@@ -302,7 +306,7 @@ export function createPivotRuntime(options = {}) {
           status: failure.commandStatus,
           reason: failure.reason,
           metadata: failure.httpStatus ? { httpStatus: failure.httpStatus } : {}
-        }, context);
+        }, auditContext);
 
         return createResult({
           ok: false,
@@ -326,7 +330,7 @@ export function createPivotRuntime(options = {}) {
       decision: lastFailure?.decision ?? policyDecision.decision,
       status: lastFailure?.commandStatus ?? CommandStatus.FAILED,
       reason: lastFailure?.reason ?? 'Command execution failed.'
-    }, context);
+    }, auditContext);
 
     return createResult({
       ok: false,

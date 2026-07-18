@@ -74,3 +74,19 @@ npm run example:procurement-approval
 ```
 
 This example shows a procurement workflow with request submission, conditional finance approval, order creation, and compensation when dispatch fails.
+
+## AI Workflow Integration
+
+Path:
+
+```text
+examples/ai-workflow-integration
+```
+
+Run:
+
+```bash
+npm run example:ai-workflow-integration
+```
+
+This example shows an AI-proposed retention workflow moving through structured-output validation feedback, plan preview, trusted approval, execution, compensation, and audit sink export.

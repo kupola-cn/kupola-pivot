@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "check": "node --check packages/core/src/index.js && node --check packages/core/src/capability-registry.js && node --check packages/protocol/src/index.js && node --check packages/policy/src/index.js && node --check packages/orchestrator/src/index.js && node --check packages/ui/src/index.js && node --check test/smoke.mjs && node --check test/smoke-fixtures.mjs && node --check test/smoke-command.mjs && node --check test/smoke-plan.mjs && node --check test/smoke-ui.mjs && npm run lint",
+    "check": "node --check packages/core/src/index.js && node --check packages/core/src/capability-registry.js && node --check packages/protocol/src/index.js && node --check packages/policy/src/index.js && node --check packages/orchestrator/src/index.js && node --check packages/ui/src/index.js && node --check test/smoke.mjs && node --check test/smoke-fixtures.mjs && node --check test/smoke-command.mjs && node --check test/smoke-plan.mjs && node --check test/smoke-ui.mjs && node --check test/smoke-ai-workflow.mjs && npm run lint",
     "docs:api": "node scripts/generate-api-reference.mjs",
     "release:check": "node scripts/release.mjs check",
     "release:publish": "node scripts/release.mjs publish",
@@ -18,6 +18,7 @@
     "format:check": "npm run lint",
     "smoke": "node test/smoke.mjs",
     "example:assistant-drawer-modal": "node examples/assistant-drawer-modal/index.mjs",
+    "example:ai-workflow-integration": "node examples/ai-workflow-integration/index.mjs",
     "example:kupola-ui-integration": "node examples/kupola-ui-integration/index.mjs",
     "example:procurement-approval": "node examples/procurement-approval/index.mjs",
     "example:his-basic": "node examples/his-basic/index.mjs",
