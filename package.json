@@ -8,14 +8,16 @@
     "packages/*"
   ],
   "scripts": {
-    "check": "node --check packages/core/src/index.js && node --check packages/core/src/capability-registry.js && node --check packages/protocol/src/index.js && node --check packages/policy/src/index.js && node --check packages/orchestrator/src/index.js && node --check packages/ui/src/index.js && node --check test/smoke.mjs && node --check test/smoke-compatibility.mjs && node --check test/smoke-service-handoff.mjs && node --check test/smoke-fixtures.mjs && node --check test/smoke-command.mjs && node --check test/smoke-plan.mjs && node --check test/smoke-ui.mjs && node --check test/smoke-ai-workflow.mjs && npm run lint",
+    "check": "node --check packages/core/src/index.js && node --check packages/core/src/capability-registry.js && node --check packages/protocol/src/index.js && node --check packages/policy/src/index.js && node --check packages/orchestrator/src/index.js && node --check packages/ui/src/index.js && node --check test/smoke.mjs && node --check test/smoke-compatibility.mjs && node --check test/smoke-contracts.mjs && node --check test/smoke-service-handoff.mjs && node --check test/smoke-fixtures.mjs && node --check test/smoke-command.mjs && node --check test/smoke-plan.mjs && node --check test/smoke-ui.mjs && node --check test/smoke-ai-workflow.mjs && npm run lint && npm run typecheck",
     "docs:api": "node scripts/generate-api-reference.mjs",
     "release:check": "node scripts/release.mjs check",
+    "release:preflight": "npm test && npm run release:check && npm pack --dry-run --workspaces",
     "release:publish": "node scripts/release.mjs publish",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "npm run lint:fix",
     "format:check": "npm run lint",
+    "typecheck": "tsc -p tsconfig.types.json",
     "smoke": "node test/smoke.mjs",
     "example:assistant-drawer-modal": "node examples/assistant-drawer-modal/index.mjs",
     "example:ai-workflow-integration": "node examples/ai-workflow-integration/index.mjs",
@@ -41,6 +43,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.7.0",
     "globals": "^17.7.0",
-    "jsdom": "^29.1.1"
+    "jsdom": "^29.1.1",
+    "typescript": "^7.0.2"
   }
 }

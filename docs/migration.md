@@ -51,4 +51,4 @@ Frontend permissions can block obvious invalid operations and show better messag
 
 `0.3.x` targets integration hardening for real project pilots: end-to-end AI proposal to preview to approval to execution examples, stronger UI helper behavior, integration tests, server handoff guidance, and clearer package usage patterns. See [Service Handoff](service-handoff.md) and [API Stability Boundary](api-stability.md) for the current guidance.
 
-`1.0` requires stable public APIs, compatibility tests, documented security boundaries, production-oriented migration guidance, and verified package publishing discipline. See [Roadmap](roadmap.md) for the full production-ready standard.
+`1.0` requires stable public APIs, compatibility tests, documented security boundaries, production-oriented migration guidance, and verified package publishing discipline. See [Production Migration Guide](production-migration.md), [Release Prep](release-prep.md), and [Roadmap](roadmap.md) for the full production-ready standard.

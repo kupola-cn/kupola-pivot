@@ -24,6 +24,8 @@ These surfaces are expected to keep working as documented across the current Dev
 - `mountCapabilityBrowser()`
 - backend security guidance in `docs/backend-security.md`
 
+These are now covered by compatibility smoke tests and TypeScript declaration checks in `npm test`.
+
 ## Preview-Level
 
 These surfaces are usable now, but they may evolve with the integration-preview line:

@@ -199,6 +199,8 @@ See:
 - [UI Integration](docs/ui-integration.md)
 - [Security Model](docs/security.md)
 - [API Stability Boundary](docs/api-stability.md)
+- [Production Migration Guide](docs/production-migration.md)
+- [Release Prep](docs/release-prep.md)
 - [Migration Notes](docs/migration.md)
 - [Roadmap](docs/roadmap.md)
 - [Examples](examples/README.md)
