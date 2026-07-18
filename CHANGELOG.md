@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.10 - Human Approval Nodes
+## 0.2.11 - Human Approval Nodes
 
 ### Added
 
