@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PIVOT Web Test Page</title>
+    <link rel="stylesheet" href="/pivot.css">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <h1>PIVOT Web Test Page</h1>
+          <p>Mock backend integration for command, simulation, plan, approval, compensation, and audit flows.</p>
+        </div>
+        <label class="actor-control">
+          <span>Actor</span>
+          <select id="actorSelect">
+            <option value="admin">Admin</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </label>
+      </header>
+
+      <section class="toolbar" aria-label="Runtime actions">
+        <button type="button" data-action="loadCapabilities">Load capabilities</button>
+        <button type="button" data-action="previewCommand">Preview command</button>
+        <button type="button" data-action="simulateCommand">Simulate command</button>
+        <button type="button" data-action="executeCommand">Execute command</button>
+        <button type="button" data-action="previewPlan">Preview plan</button>
+        <button type="button" data-action="executePlan">Execute plan</button>
+        <button type="button" data-action="loadAudit">Load audit</button>
+        <button type="button" data-action="reset">Reset mock data</button>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <div>
+          <span class="metric-label">Last action</span>
+          <strong id="lastAction">Booting</strong>
+        </div>
+        <div>
+          <span class="metric-label">HTTP status</span>
+          <strong id="lastStatus">-</strong>
+        </div>
+        <div>
+          <span class="metric-label">Runtime ok</span>
+          <strong id="lastOk">-</strong>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <section class="panel">
+          <header class="panel-header">
+            <h2>Mock Backend State</h2>
+          </header>
+          <div id="stateView" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <header class="panel-header">
+            <h2>Capability Catalog</h2>
+          </header>
+          <div id="capabilityHtml" class="pivot-surface"></div>
+        </section>
+
+        <section class="panel panel-wide">
+          <header class="panel-header">
+            <h2>Runtime HTML Output</h2>
+          </header>
+          <div id="runtimeHtml" class="pivot-surface"></div>
+        </section>
+
+        <section class="panel">
+          <header class="panel-header">
+            <h2>Plan Graph</h2>
+          </header>
+          <div id="graphHtml" class="pivot-surface"></div>
+        </section>
+
+        <section class="panel">
+          <header class="panel-header">
+            <h2>JSON Response</h2>
+          </header>
+          <pre id="jsonView" class="json-view">{}</pre>
+        </section>
+
+        <section class="panel panel-wide">
+          <header class="panel-header">
+            <h2>Audit Viewer</h2>
+          </header>
+          <div id="auditHtml" class="pivot-surface"></div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.mjs"></script>
+  </body>
+</html>

@@ -106,3 +106,25 @@ npm run example:service-handoff
 ```
 
 This example shows a server-style PIVOT integration with capability metadata, preview, simulation, execution, plan orchestration, approval, compensation, and audit handling.
+
+## Web Test Page
+
+Path:
+
+```text
+examples/web-test-page
+```
+
+Run:
+
+```bash
+npm run example:web-test-page
+```
+
+Open:
+
+```text
+http://127.0.0.1:4175
+```
+
+This example provides a complete browser test surface backed by a mock Node service. It exercises capability browsing, command preview, simulation, execution, plan preview, plan graph rendering, approval, compensation, audit output, and mock backend state updates.
