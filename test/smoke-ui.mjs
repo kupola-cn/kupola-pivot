@@ -30,6 +30,7 @@ import {
   validateParams,
   validatePlan
 } from '@kupola/pivot';
+import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import {
   auditRuntime,
@@ -150,41 +151,44 @@ if (!renderTimelineToHTML([], { ariaLabel: 'Activity timeline' }).includes('role
   throw new Error('Expected empty timeline renderer to expose a status role.');
 }
 
-const mountTarget = createMountTarget();
-mountTimeline(mountTarget, [{ stage: 'validation', status: 'passed', message: '<b>safe</b>' }], { ariaLabel: 'Activity timeline' });
+const dom = new JSDOM('<!doctype html><html><body><div id="timeline"></div><div id="result"></div><div id="preview"></div><div id="timeline-detail"></div><div id="audit"></div><div id="capabilities"></div><div id="graph"></div></body></html>');
+const previousDocument = globalThis.document;
+globalThis.document = dom.window.document;
 
-if (mountTarget.attributes['data-pivot-mounted'] !== 'timeline' || mountTarget.attributes['aria-live'] !== 'polite' || mountTarget.attributes['aria-label'] !== 'Activity timeline' || mountTarget.innerHTML.includes('<b>safe</b>')) {
-  throw new Error('Expected mountTimeline to set mount metadata and escape hostile text.');
-}
+try {
+  const mountTarget = dom.window.document.querySelector('#timeline');
+  mountTimeline('#timeline', [{ stage: 'validation', status: 'passed', message: '<b>safe</b>' }], { ariaLabel: 'Activity timeline' });
 
-mountResult(mountTarget, result, { ariaLabel: 'Execution result' });
+  if (mountTarget.getAttribute('data-pivot-mounted') !== 'timeline' || mountTarget.getAttribute('aria-live') !== 'polite' || mountTarget.getAttribute('aria-label') !== 'Activity timeline' || mountTarget.innerHTML.includes('<b>safe</b>')) {
+    throw new Error('Expected mountTimeline to set mount metadata and escape hostile text.');
+  }
 
-if (mountTarget.attributes['data-pivot-mounted'] !== 'result') {
-  throw new Error('Expected mountResult to update the mount marker.');
-}
+  const resultTarget = dom.window.document.querySelector('#result');
+  mountResult(resultTarget, result, { ariaLabel: 'Execution result' });
 
-mountPlanPreview(mountTarget, planPreview, { ariaLabel: 'Plan preview region' });
-mountTimelineDetail(mountTarget, result, { ariaLabel: 'Timeline detail region' });
-mountAuditViewer(mountTarget, auditRuntime.getAuditEvents(), { ariaLabel: 'Audit viewer region' });
-mountCapabilityBrowser(mountTarget, runtime.listCapabilities(), { ariaLabel: 'Capability browser region' });
-mountPlanGraph(mountTarget, conditionalPlanResult, { ariaLabel: 'Plan graph region' });
+  if (resultTarget.getAttribute('data-pivot-mounted') !== 'result') {
+    throw new Error('Expected mountResult to update the mount marker.');
+  }
 
-if (mountTarget.attributes['data-pivot-mounted'] !== 'plan-graph') {
-  throw new Error('Expected mountPlanGraph to update the mount marker.');
+  mountPlanPreview(dom.window.document.querySelector('#preview'), planPreview, { ariaLabel: 'Plan preview region' });
+  mountTimelineDetail(dom.window.document.querySelector('#timeline-detail'), result, { ariaLabel: 'Timeline detail region' });
+  mountAuditViewer(dom.window.document.querySelector('#audit'), auditRuntime.getAuditEvents(), { ariaLabel: 'Audit viewer region' });
+  mountCapabilityBrowser(dom.window.document.querySelector('#capabilities'), runtime.listCapabilities(), { ariaLabel: 'Capability browser region' });
+  mountPlanGraph(dom.window.document.querySelector('#graph'), conditionalPlanResult, { ariaLabel: 'Plan graph region' });
+
+  if (dom.window.document.querySelector('#graph').getAttribute('data-pivot-mounted') !== 'plan-graph') {
+    throw new Error('Expected mountPlanGraph to update the mount marker.');
+  }
+
+  if (globalThis.document !== dom.window.document) {
+    throw new Error('Expected DOM test to install the jsdom document.');
+  }
+} finally {
+  globalThis.document = previousDocument;
 }
 
 const css = readFileSync(new URL('../packages/ui/src/pivot.css', import.meta.url), 'utf8');
 
 if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline') || !css.includes('.pivot-capability-browser') || !css.includes('.pivot-plan-graph')) {
   throw new Error('Expected default PIVOT UI CSS to include result, timeline, capability, and graph styles.');
-}
-
-function createMountTarget() {
-  return {
-    innerHTML: '',
-    attributes: {},
-    setAttribute(name, value) {
-      this.attributes[name] = String(value);
-    }
-  };
 }
