@@ -61,7 +61,7 @@ When a capability provides `dryRun`, use `simulateCommand()` for impact estimati
 
 For pilots, `@kupola/pivot` is the easiest starting point because it bundles protocol, policy, orchestrator, and UI helpers. Use `@kupola/pivot-protocol` and `@kupola/pivot-policy` directly when you only need contracts or policy helpers, and add `@kupola/pivot-orchestrator` / `@kupola/pivot-ui` only when that layer is actually needed.
 
-Preview-level surfaces may still evolve between 0.2.x and 0.3.x. The pilot-stable expectation is that command validation, preview, execution, compensation, audit metadata, and trusted UI mount behavior continue to work as documented, even if the surrounding example code and docs keep moving.
+Preview-level surfaces may still evolve between 0.2.x and 0.3.x. The pilot-stable expectation is that command validation, preview, execution, compensation, audit metadata, and trusted UI mount behavior continue to work as documented, even if the surrounding example code and docs keep moving. See [API Stability Boundary](docs/api-stability.md) for the current split between pilot-stable and preview-level surfaces.
 
 ## Install
 
@@ -193,10 +193,12 @@ See:
 - [Architecture](docs/architecture.md)
 - [AI Integration](docs/ai-integration.md)
 - [Backend Security](docs/backend-security.md)
+- [Service Handoff](docs/service-handoff.md)
 - [Capability Registry](docs/capabilities.md)
 - [API Reference](docs/api-reference.md)
 - [UI Integration](docs/ui-integration.md)
 - [Security Model](docs/security.md)
+- [API Stability Boundary](docs/api-stability.md)
 - [Migration Notes](docs/migration.md)
 - [Roadmap](docs/roadmap.md)
 - [Examples](examples/README.md)

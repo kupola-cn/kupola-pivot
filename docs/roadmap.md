@@ -97,7 +97,7 @@ Exit criteria for the 0.3.x line:
 
 - at least one complex example covers AI-generated plan, preview, human approval, execution, compensation, and audit sink output
 - `npm test`, release checks, and workspace package dry-runs remain clean before every publish
-- docs explain which APIs are stable enough for pilots and which are still preview-level
+- docs explain which APIs are stable enough for pilots and which are still preview-level; see [API Stability Boundary](api-stability.md)
 - Kupola 2.x UI bridge remains adapter-based and does not fork component code into PIVOT
 
 ## 1.0 Production-Ready Standard
