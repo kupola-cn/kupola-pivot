@@ -1000,7 +1000,7 @@ function buildPlanGraphLayout(entries, edges) {
 }
 
 function renderPlanGraphEdges(graph, graphId) {
-  const paths = graph.edges.map((edge, index) => {
+  const paths = graph.edges.map((edge, _index) => {
     const fromPosition = graph.layout.positions.get(String(edge?.from ?? '').trim());
     const toPosition = graph.layout.positions.get(String(edge?.to ?? '').trim());
 

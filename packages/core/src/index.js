@@ -34,7 +34,7 @@ export { createTrustedUIAdapter, mountAuditViewer, mountCapabilityBrowser, mount
 export { createCapabilityRegistry } from './capability-registry.js';
 
 import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, createValidationResult, redactParams, validateCommand, validateParams } from '@kupola/pivot-protocol';
-import { PolicyDecision, confirm, createPolicyPipeline } from '@kupola/pivot-policy';
+import { PolicyDecision, createPolicyPipeline } from '@kupola/pivot-policy';
 import { createPlan, evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 import { createCapabilityRegistry } from './capability-registry.js';
 import { createTrustedUIAdapter } from '@kupola/pivot-ui';
@@ -804,7 +804,7 @@ function needsConfirmation(command, capability, policyDecision) {
 }
 
 function toCapabilityPreview(capability) {
-  const { execute, ...preview } = capability;
+  const { execute: _execute, ...preview } = capability;
   return preview;
 }
 
@@ -1542,6 +1542,10 @@ function getRetryDelay(retry, attempt) {
       : baseDelay;
   const cappedDelay = retry.maxDelayMs === null ? rawDelay : Math.min(rawDelay, retry.maxDelayMs);
   return Math.max(0, cappedDelay);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function executeCapabilityWithTimeout(capability, input, timeoutMs) {
