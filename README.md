@@ -173,6 +173,7 @@ See:
 - [AI Integration](docs/ai-integration.md)
 - [Backend Security](docs/backend-security.md)
 - [Capability Registry](docs/capabilities.md)
+- [API Reference](docs/api-reference.md)
 - [UI Integration](docs/ui-integration.md)
 - [Security Model](docs/security.md)
 - [Migration Notes](docs/migration.md)
