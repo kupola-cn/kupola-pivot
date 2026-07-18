@@ -685,6 +685,8 @@ export interface PivotCapabilityBrowserOptions {
   message?: string;
   query?: string;
   filter?: PivotCapabilityFilter;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }
 ```
 
@@ -746,6 +748,8 @@ export interface PivotPlanGraphOptions {
   message?: string;
   showEdges?: boolean;
   includeEdgeList?: boolean;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }
 ```
 
@@ -757,6 +761,8 @@ export interface PivotPlanPreviewOptions {
   includeTimeline?: boolean;
   includeNodes?: boolean;
   emptyText?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }
 ```
 
@@ -772,6 +778,7 @@ export function createTrustedUIAdapter(adapter?: Partial<TrustedUIAdapter>): Tru
 export function renderTimelineToHTML(timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
+  ariaLabel?: string;
 }): string;
 ```
 
@@ -781,6 +788,7 @@ export function renderTimelineToHTML(timeline?: unknown[], options?: {
 export function renderResultToHTML(result: PivotResult, options?: {
   className?: string;
   includeTimeline?: boolean;
+  ariaLabel?: string;
 }): string;
 ```
 
@@ -793,6 +801,7 @@ export function renderTimelineDetailToHTML(result: PivotResult, options?: {
   includeAudit?: boolean;
   emptyText?: string;
   title?: string;
+  ariaLabel?: string;
 }): string;
 ```
 
@@ -831,6 +840,8 @@ export function renderPlanGraphToHTML(plan: PivotPlanGraphInput, options?: Pivot
 export function mountTimeline<TElement extends Element>(target: string | TElement, timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 ```
 
@@ -840,6 +851,8 @@ export function mountTimeline<TElement extends Element>(target: string | TElemen
 export function mountResult<TElement extends Element>(target: string | TElement, result: PivotResult, options?: {
   className?: string;
   includeTimeline?: boolean;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 ```
 
@@ -852,6 +865,8 @@ export function mountTimelineDetail<TElement extends Element>(target: string | T
   includeAudit?: boolean;
   emptyText?: string;
   title?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 ```
 
@@ -863,6 +878,8 @@ export function mountAuditViewer<TElement extends Element>(target: string | TEle
   emptyText?: string;
   title?: string;
   message?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 ```
 
