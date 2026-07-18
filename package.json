@@ -19,6 +19,7 @@
     "smoke": "node test/smoke.mjs",
     "example:assistant-drawer-modal": "node examples/assistant-drawer-modal/index.mjs",
     "example:kupola-ui-integration": "node examples/kupola-ui-integration/index.mjs",
+    "example:procurement-approval": "node examples/procurement-approval/index.mjs",
     "example:his-basic": "node examples/his-basic/index.mjs",
     "test": "npm run check && npm run smoke"
   },

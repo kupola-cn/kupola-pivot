@@ -58,3 +58,19 @@ npm run example:kupola-ui-integration
 ```
 
 This example shows how a Kupola 2.x app can use Drawer, Modal, Table, and Message primitives around PIVOT previews and execution.
+
+## Procurement Approval
+
+Path:
+
+```text
+examples/procurement-approval
+```
+
+Run:
+
+```bash
+npm run example:procurement-approval
+```
+
+This example shows a procurement workflow with request submission, conditional finance approval, order creation, and compensation when dispatch fails.
