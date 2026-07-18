@@ -142,6 +142,12 @@ Plan previews can be rendered with the UI package as plain HTML:
 const planPreviewHTML = renderPlanPreviewToHTML(previewPlanResult);
 ```
 
+Execution timelines can be rendered as a detail view:
+
+```js
+const timelineDetailHTML = renderTimelineDetailToHTML(commandResult);
+```
+
 ## Why This Matters
 
 This mechanism gives PIVOT a hard boundary:

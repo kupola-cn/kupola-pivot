@@ -56,6 +56,41 @@ export function renderResultToHTML(result, options = {}) {
   ].join('');
 }
 
+export function renderTimelineDetailToHTML(result, options = {}) {
+  const className = options.className ?? 'pivot-timeline-detail';
+  const includeTimeline = options.includeTimeline ?? true;
+  const includeAudit = options.includeAudit ?? true;
+  const emptyText = options.emptyText ?? 'No timeline detail available.';
+  const title = options.title ?? result?.data?.plan?.intent ?? result?.data?.command?.intent ?? result?.message ?? 'Timeline detail';
+  const ok = Boolean(result?.ok);
+  const status = ok ? 'success' : 'failed';
+  const timeline = result?.explain?.timeline ?? [];
+
+  if (!result || typeof result !== 'object') {
+    return `<section class="${escapeAttr(className)} pivot-timeline-detail--empty"><div class="pivot-timeline-detail__empty">${escapeHTML(emptyText)}</div></section>`;
+  }
+
+  return [
+    `<section class="${escapeAttr(className)} pivot-timeline-detail--${escapeAttr(status)}">`,
+    '<header class="pivot-timeline-detail__header">',
+    `<span class="pivot-timeline-detail__status">${escapeHTML(status)}</span>`,
+    `<strong class="pivot-timeline-detail__title">${escapeHTML(title)}</strong>`,
+    `<div class="pivot-timeline-detail__message">${escapeHTML(result?.message ?? '')}</div>`,
+    '</header>',
+    '<div class="pivot-timeline-detail__summary">',
+    renderTimelineDetailSummaryItem('Executed', result?.explain?.executedNodes),
+    renderTimelineDetailSummaryItem('Skipped', result?.explain?.skippedNodes),
+    renderTimelineDetailSummaryItem('Failed', result?.explain?.failedNodes),
+    renderTimelineDetailSummaryItem('Compensations', result?.explain?.compensationNodes),
+    renderTimelineDetailSummaryItem('Failed compensations', result?.explain?.failedCompensations),
+    renderTimelineDetailSummaryItem('Attempts', result?.explain?.attempts),
+    '</div>',
+    includeAudit && result?.audit ? renderTimelineDetailAudit(result.audit) : '',
+    includeTimeline ? renderTimelineToHTML(timeline, { className: 'pivot-timeline-detail__timeline' }) : '',
+    '</section>'
+  ].join('');
+}
+
 export function renderPlanPreviewToHTML(preview, options = {}) {
   const className = options.className ?? 'pivot-plan-preview';
   const includeTimeline = options.includeTimeline ?? true;
@@ -113,6 +148,12 @@ export function mountResult(target, result, options = {}) {
 export function mountPlanPreview(target, preview, options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderPlanPreviewToHTML(preview, options);
+  return element;
+}
+
+export function mountTimelineDetail(target, result, options = {}) {
+  const element = resolveTarget(target);
+  element.innerHTML = renderTimelineDetailToHTML(result, options);
   return element;
 }
 
@@ -175,4 +216,46 @@ function renderPlanPreviewNodes(nodes) {
   }).join('');
 
   return `<ol class="pivot-plan-preview__nodes">${items}</ol>`;
+}
+
+function renderTimelineDetailSummaryItem(label, value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-timeline-detail__summary-item">',
+    `<span class="pivot-timeline-detail__label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-timeline-detail__value">${escapeHTML(value)}</span>`,
+    '</div>'
+  ].join('');
+}
+
+function renderTimelineDetailAudit(audit) {
+  return [
+    '<section class="pivot-timeline-detail__audit">',
+    '<div class="pivot-timeline-detail__audit-title">Audit</div>',
+    '<div class="pivot-timeline-detail__audit-grid">',
+    renderTimelineDetailAuditItem('ID', audit?.id),
+    renderTimelineDetailAuditItem('Decision', audit?.decision),
+    renderTimelineDetailAuditItem('Status', audit?.status),
+    renderTimelineDetailAuditItem('Reason', audit?.reason),
+    renderTimelineDetailAuditItem('Capability', audit?.capability),
+    renderTimelineDetailAuditItem('Timestamp', audit?.timestamp),
+    '</div>',
+    '</section>'
+  ].join('');
+}
+
+function renderTimelineDetailAuditItem(label, value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-timeline-detail__audit-item">',
+    `<span class="pivot-timeline-detail__audit-label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-timeline-detail__audit-value">${escapeHTML(value)}</span>`,
+    '</div>'
+  ].join('');
 }

@@ -11,6 +11,7 @@ import {
   parseStructuredCommandOutput,
   parseStructuredPlanOutput,
   renderPlanPreviewToHTML,
+  renderTimelineDetailToHTML,
   redactParams,
   renderResultToHTML,
   renderTimelineToHTML,
@@ -1320,13 +1321,18 @@ if (!failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.comp
 const timelineHTML = renderTimelineToHTML(result.explain.timeline);
 const resultHTML = renderResultToHTML(failingPlanResult);
 const planPreviewHTML = renderPlanPreviewToHTML(planPreview);
+const timelineDetailHTML = renderTimelineDetailToHTML(result);
 
-if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview')) {
+if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail')) {
   throw new Error('Expected UI renderers to produce timeline and result markup.');
 }
 
 if (!planPreviewHTML.includes('pivot-plan-preview__node') || !planPreviewHTML.includes('validate-parent')) {
   throw new Error('Expected plan preview renderer to include node summaries.');
+}
+
+if (!timelineDetailHTML.includes('pivot-timeline-detail__audit') || !timelineDetailHTML.includes('pivot-timeline-detail__timeline')) {
+  throw new Error('Expected timeline detail renderer to include audit and timeline sections.');
 }
 
 const escapedHTML = renderTimelineToHTML([{ stage: '<script>', status: 'failed', message: '<img src=x onerror=alert(1)>' }]);
