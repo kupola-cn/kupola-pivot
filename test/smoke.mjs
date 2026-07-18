@@ -11,6 +11,7 @@ import {
   parseStructuredCommandOutput,
   parseStructuredPlanOutput,
   renderAuditViewerToHTML,
+  renderCapabilityBrowserToHTML,
   renderPlanPreviewToHTML,
   renderTimelineDetailToHTML,
   redactParams,
@@ -1324,13 +1325,54 @@ const resultHTML = renderResultToHTML(failingPlanResult);
 const planPreviewHTML = renderPlanPreviewToHTML(planPreview);
 const timelineDetailHTML = renderTimelineDetailToHTML(result);
 const auditViewerHTML = renderAuditViewerToHTML(auditRuntime.getAuditEvents());
+const capabilityBrowserHTML = renderCapabilityBrowserToHTML(manifestRegistry.list(), {
+  query: 'team',
+  filter: {
+    domain: 'team',
+    permission: 'team:create',
+    tag: 'create'
+  }
+});
+const filteredCapabilityBrowserHTML = renderCapabilityBrowserToHTML(runtime.listCapabilities(), {
+  filter: {
+    risk: 'medium',
+    allowUnknownParams: true
+  }
+});
 
-if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail') || !auditViewerHTML.includes('pivot-audit-viewer')) {
+if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail') || !auditViewerHTML.includes('pivot-audit-viewer') || !capabilityBrowserHTML.includes('pivot-capability-browser')) {
   throw new Error('Expected UI renderers to produce timeline and result markup.');
 }
 
 if (!planPreviewHTML.includes('pivot-plan-preview__node') || !planPreviewHTML.includes('validate-parent')) {
   throw new Error('Expected plan preview renderer to include node summaries.');
+}
+
+if (!capabilityBrowserHTML.includes('team.create') || !capabilityBrowserHTML.includes('pivot-capability-browser__token--permission') || !capabilityBrowserHTML.includes('pivot-capability-browser__detail-label')) {
+  throw new Error('Expected capability browser renderer to include capability details and tokens.');
+}
+
+if (!filteredCapabilityBrowserHTML.includes('organization.metadata') || filteredCapabilityBrowserHTML.includes('user.password.update')) {
+  throw new Error('Expected capability browser filters to narrow the visible capabilities.');
+}
+
+const escapedCapabilityBrowserHTML = renderCapabilityBrowserToHTML([
+  {
+    name: '<script>alert(1)</script>',
+    resource: 'test',
+    action: 'query',
+    risk: 'low',
+    permissions: ['test:query'],
+    tags: ['<img>'],
+    dependencies: ['dep-1'],
+    inputSchema: { field: { type: 'string', required: true } },
+    outputSchema: { ok: { type: 'boolean' } },
+    examples: [{ label: '<b>x</b>', description: '<i>y</i>', params: { nested: '<svg>' } }]
+  }
+]);
+
+if (escapedCapabilityBrowserHTML.includes('<script>') || escapedCapabilityBrowserHTML.includes('<img>') || escapedCapabilityBrowserHTML.includes('<svg>')) {
+  throw new Error('Expected capability browser renderer to escape HTML content.');
 }
 
 if (!timelineDetailHTML.includes('pivot-timeline-detail__audit') || !timelineDetailHTML.includes('pivot-timeline-detail__timeline')) {
@@ -1349,7 +1391,7 @@ if (escapedHTML.includes('<script>') || escapedHTML.includes('<img')) {
 
 const css = readFileSync(new URL('../packages/ui/src/pivot.css', import.meta.url), 'utf8');
 
-if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline')) {
+if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline') || !css.includes('.pivot-capability-browser')) {
   throw new Error('Expected default PIVOT UI CSS to include result and timeline styles.');
 }
 

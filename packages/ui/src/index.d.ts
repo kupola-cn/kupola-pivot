@@ -47,6 +47,29 @@ export function renderAuditViewerToHTML(audits?: PivotAuditEvent[], options?: {
   title?: string;
   message?: string;
 }): string;
+export function renderCapabilityBrowserToHTML(capabilities?: PivotCapability[], options?: {
+  className?: string;
+  emptyText?: string;
+  title?: string;
+  message?: string;
+  query?: string;
+  filter?: {
+    resource?: string;
+    action?: string;
+    permission?: string;
+    permissions?: string[];
+    domain?: string;
+    group?: string;
+    version?: string;
+    risk?: string;
+    tag?: string;
+    tags?: string[];
+    dependency?: string;
+    dependencies?: string[];
+    requiresConfirmation?: boolean;
+    allowUnknownParams?: boolean;
+  };
+}): string;
 export function renderPlanPreviewToHTML(preview: PivotResult<{
   plan: PivotPlan;
   nodes: Array<{
@@ -82,6 +105,29 @@ export function mountAuditViewer<TElement extends Element>(target: string | TEle
   emptyText?: string;
   title?: string;
   message?: string;
+}): TElement | Element;
+export function mountCapabilityBrowser<TElement extends Element>(target: string | TElement, capabilities?: PivotCapability[], options?: {
+  className?: string;
+  emptyText?: string;
+  title?: string;
+  message?: string;
+  query?: string;
+  filter?: {
+    resource?: string;
+    action?: string;
+    permission?: string;
+    permissions?: string[];
+    domain?: string;
+    group?: string;
+    version?: string;
+    risk?: string;
+    tag?: string;
+    tags?: string[];
+    dependency?: string;
+    dependencies?: string[];
+    requiresConfirmation?: boolean;
+    allowUnknownParams?: boolean;
+  };
 }): TElement | Element;
 export function mountPlanPreview<TElement extends Element>(target: string | TElement, preview: PivotResult<{
   plan: PivotPlan;

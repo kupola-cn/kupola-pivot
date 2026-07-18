@@ -127,6 +127,40 @@ export function renderAuditViewerToHTML(audits = [], options = {}) {
   ].join('');
 }
 
+export function renderCapabilityBrowserToHTML(capabilities = [], options = {}) {
+  const className = options.className ?? 'pivot-capability-browser';
+  const emptyText = options.emptyText ?? 'No capabilities available.';
+  const title = options.title ?? 'Capability browser';
+  const query = typeof options.query === 'string' ? options.query.trim().toLowerCase() : '';
+  const filter = options.filter ?? {};
+  const entries = applyCapabilityBrowserFilter(Array.isArray(capabilities) ? capabilities : [], filter, query);
+  const summary = summarizeCapabilities(entries);
+
+  if (entries.length === 0) {
+    return `<section class="${escapeAttr(className)} pivot-capability-browser--empty"><div class="pivot-capability-browser__empty">${escapeHTML(emptyText)}</div></section>`;
+  }
+
+  return [
+    `<section class="${escapeAttr(className)}">`,
+    '<header class="pivot-capability-browser__header">',
+    `<strong class="pivot-capability-browser__title">${escapeHTML(title)}</strong>`,
+    `<div class="pivot-capability-browser__message">${escapeHTML(options.message ?? `Showing ${entries.length} capabilities.`)}</div>`,
+    '</header>',
+    '<div class="pivot-capability-browser__summary">',
+    renderCapabilitySummaryItem('Total', summary.total),
+    renderCapabilitySummaryItem('Confirm', summary.requiresConfirmation),
+    renderCapabilitySummaryItem('Low', summary.risk.low),
+    renderCapabilitySummaryItem('Medium', summary.risk.medium),
+    renderCapabilitySummaryItem('High', summary.risk.high),
+    renderCapabilitySummaryItem('Critical', summary.risk.critical),
+    '</div>',
+    '<ol class="pivot-capability-browser__list">',
+    ...entries.map((capability, index) => renderCapabilityBrowserEntry(capability, index)),
+    '</ol>',
+    '</section>'
+  ].join('');
+}
+
 export function renderPlanPreviewToHTML(preview, options = {}) {
   const className = options.className ?? 'pivot-plan-preview';
   const includeTimeline = options.includeTimeline ?? true;
@@ -196,6 +230,12 @@ export function mountTimelineDetail(target, result, options = {}) {
 export function mountAuditViewer(target, audits = [], options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderAuditViewerToHTML(audits, options);
+  return element;
+}
+
+export function mountCapabilityBrowser(target, capabilities = [], options = {}) {
+  const element = resolveTarget(target);
+  element.innerHTML = renderCapabilityBrowserToHTML(capabilities, options);
   return element;
 }
 
@@ -397,4 +437,290 @@ function countAuditDecisions(entries) {
     accumulator[decision] = (accumulator[decision] ?? 0) + 1;
     return accumulator;
   }, {});
+}
+
+function summarizeCapabilities(capabilities) {
+  return capabilities.reduce((accumulator, capability) => {
+    accumulator.total += 1;
+
+    const risk = String(capability?.risk ?? 'unknown').toLowerCase();
+    if (Object.hasOwn(accumulator.risk, risk)) {
+      accumulator.risk[risk] += 1;
+    }
+
+    if (capability?.requiresConfirmation) {
+      accumulator.requiresConfirmation += 1;
+    }
+
+    return accumulator;
+  }, {
+    total: 0,
+    requiresConfirmation: 0,
+    risk: {
+      low: 0,
+      medium: 0,
+      high: 0,
+      critical: 0
+    }
+  });
+}
+
+function renderCapabilitySummaryItem(label, value) {
+  return [
+    '<div class="pivot-capability-browser__summary-item">',
+    `<span class="pivot-capability-browser__summary-label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-capability-browser__summary-value">${escapeHTML(value ?? 0)}</span>`,
+    '</div>'
+  ].join('');
+}
+
+function renderCapabilityBrowserEntry(capability, index) {
+  const permissions = Array.isArray(capability?.permissions) ? capability.permissions : [];
+  const dependencies = Array.isArray(capability?.dependencies) ? capability.dependencies : [];
+  const examples = Array.isArray(capability?.examples) ? capability.examples : [];
+  const tags = Array.isArray(capability?.tags) ? capability.tags : [];
+  const inputSchema = capability?.inputSchema ?? capability?.paramsSchema ?? {};
+  const outputSchema = capability?.outputSchema ?? {};
+  const description = capability?.description ?? '';
+  const risk = String(capability?.risk ?? 'unknown').toLowerCase();
+
+  return [
+    `<li class="pivot-capability-browser__item pivot-capability-browser__item--${escapeAttr(risk)}">`,
+    '<article class="pivot-capability-browser__card">',
+    '<div class="pivot-capability-browser__card-header">',
+    `<span class="pivot-capability-browser__index">#${escapeHTML(index + 1)}</span>`,
+    `<span class="pivot-capability-browser__name">${escapeHTML(capability?.name ?? '')}</span>`,
+    `<span class="pivot-capability-browser__risk">${escapeHTML(risk)}</span>`,
+    '</div>',
+    description ? `<div class="pivot-capability-browser__description">${escapeHTML(description)}</div>` : '',
+    '<div class="pivot-capability-browser__grid">',
+    renderCapabilityField('Resource', capability?.resource),
+    renderCapabilityField('Action', capability?.action),
+    renderCapabilityField('Domain', capability?.domain),
+    renderCapabilityField('Group', capability?.group),
+    renderCapabilityField('Version', capability?.version),
+    renderCapabilityField('Confirm', capability?.requiresConfirmation ? 'required' : 'no'),
+    renderCapabilityField('Unknown params', capability?.allowUnknownParams ? 'allowed' : 'blocked'),
+    renderCapabilityField('Permissions', permissions.length),
+    renderCapabilityField('Dependencies', dependencies.length),
+    renderCapabilityField('Examples', examples.length),
+    '</div>',
+    renderCapabilityTokenList('Tags', tags, 'tag'),
+    renderCapabilityTokenList('Permissions', permissions, 'permission'),
+    renderCapabilityDependencyList(dependencies),
+    renderCapabilitySchemaSummary('Input', inputSchema),
+    renderCapabilitySchemaSummary('Output', outputSchema),
+    renderCapabilityExampleList(examples),
+    '</article>',
+    '</li>'
+  ].join('');
+}
+
+function renderCapabilityField(label, value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-capability-browser__field">',
+    `<span class="pivot-capability-browser__field-label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-capability-browser__field-value">${escapeHTML(value)}</span>`,
+    '</div>'
+  ].join('');
+}
+
+function renderCapabilityTokenList(label, values, modifier) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-capability-browser__tokens">',
+    `<span class="pivot-capability-browser__tokens-label">${escapeHTML(label)}</span>`,
+    ...values.map((value) => `<span class="pivot-capability-browser__token pivot-capability-browser__token--${escapeAttr(modifier)}">${escapeHTML(value)}</span>`),
+    '</div>'
+  ].join('');
+}
+
+function renderCapabilityDependencyList(dependencies) {
+  if (!Array.isArray(dependencies) || dependencies.length === 0) {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-capability-browser__detail">',
+    '<span class="pivot-capability-browser__detail-label">Dependencies</span>',
+    '<ul class="pivot-capability-browser__detail-list">',
+    ...dependencies.map((dependency) => {
+      const name = typeof dependency === 'string' ? dependency : dependency?.capability;
+      const version = typeof dependency === 'object' && dependency?.version ? ` ${dependency.version}` : '';
+      const optional = typeof dependency === 'object' && dependency?.optional ? ' optional' : '';
+      const description = typeof dependency === 'object' && dependency?.description ? ` - ${dependency.description}` : '';
+
+      return `<li>${escapeHTML(`${name ?? 'unknown'}${version}${optional}${description}`)}</li>`;
+    }),
+    '</ul>',
+    '</div>'
+  ].join('');
+}
+
+function renderCapabilitySchemaSummary(label, schema) {
+  if (!isPlainObject(schema) || Object.keys(schema).length === 0) {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-capability-browser__detail">',
+    `<span class="pivot-capability-browser__detail-label">${escapeHTML(label)} schema</span>`,
+    '<ul class="pivot-capability-browser__detail-list">',
+    ...Object.entries(schema).map(([field, rule]) => {
+      const type = typeof rule === 'string' ? rule : rule?.type ?? 'unknown';
+      const required = typeof rule === 'object' && rule?.required ? ' required' : '';
+      const sensitive = typeof rule === 'object' && rule?.sensitive ? ' sensitive' : '';
+
+      return `<li><code>${escapeHTML(field)}</code>: ${escapeHTML(`${type}${required}${sensitive}`)}</li>`;
+    }),
+    '</ul>',
+    '</div>'
+  ].join('');
+}
+
+function renderCapabilityExampleList(examples) {
+  if (!Array.isArray(examples) || examples.length === 0) {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-capability-browser__detail">',
+    '<span class="pivot-capability-browser__detail-label">Examples</span>',
+    '<ul class="pivot-capability-browser__detail-list">',
+    ...examples.map((example) => {
+      const label = typeof example === 'string' ? example : example?.label ?? 'Example';
+      const description = typeof example === 'object' && example?.description ? ` - ${example.description}` : '';
+      const params = typeof example === 'object' && example?.params ? ` ${formatCapabilityValue(example.params)}` : '';
+
+      return `<li>${escapeHTML(`${label}${description}${params}`)}</li>`;
+    }),
+    '</ul>',
+    '</div>'
+  ].join('');
+}
+
+function formatCapabilityValue(value) {
+  try {
+    return JSON.stringify(value, createJsonReplacer());
+  } catch {
+    return String(value);
+  }
+}
+
+function applyCapabilityBrowserFilter(capabilities, filter, query) {
+  return capabilities.filter((capability) => {
+    if (query && !matchesCapabilityQuery(capability, query)) {
+      return false;
+    }
+
+    if (!isPlainObject(filter)) {
+      return true;
+    }
+
+    if (typeof filter.resource === 'string' && capability?.resource !== filter.resource) {
+      return false;
+    }
+
+    if (typeof filter.action === 'string' && capability?.action !== filter.action) {
+      return false;
+    }
+
+    if (typeof filter.domain === 'string' && capability?.domain !== filter.domain) {
+      return false;
+    }
+
+    if (typeof filter.group === 'string' && capability?.group !== filter.group) {
+      return false;
+    }
+
+    if (typeof filter.version === 'string' && capability?.version !== filter.version) {
+      return false;
+    }
+
+    if (typeof filter.risk === 'string' && String(capability?.risk ?? '').toLowerCase() !== filter.risk.toLowerCase()) {
+      return false;
+    }
+
+    if (typeof filter.requiresConfirmation === 'boolean' && Boolean(capability?.requiresConfirmation) !== filter.requiresConfirmation) {
+      return false;
+    }
+
+    if (typeof filter.allowUnknownParams === 'boolean' && Boolean(capability?.allowUnknownParams) !== filter.allowUnknownParams) {
+      return false;
+    }
+
+    if (typeof filter.permission === 'string') {
+      const permissions = Array.isArray(capability?.permissions) ? capability.permissions : [];
+      if (!permissions.includes(filter.permission)) {
+        return false;
+      }
+    }
+
+    if (typeof filter.tag === 'string') {
+      const capabilityTags = Array.isArray(capability?.tags) ? capability.tags : [];
+      if (!capabilityTags.includes(filter.tag)) {
+        return false;
+      }
+    }
+
+    if (Array.isArray(filter.permissions) && filter.permissions.length > 0) {
+      const permissions = Array.isArray(capability?.permissions) ? capability.permissions : [];
+      if (!filter.permissions.every((permission) => permissions.includes(permission))) {
+        return false;
+      }
+    }
+
+    if (typeof filter.dependency === 'string' && !matchesCapabilityDependency(capability, filter.dependency)) {
+      return false;
+    }
+
+    if (Array.isArray(filter.dependencies) && filter.dependencies.length > 0 && !filter.dependencies.every((dependency) => matchesCapabilityDependency(capability, dependency))) {
+      return false;
+    }
+
+    if (Array.isArray(filter.tags) && filter.tags.length > 0) {
+      const capabilityTags = Array.isArray(capability?.tags) ? capability.tags : [];
+      if (!filter.tags.every((tag) => capabilityTags.includes(tag))) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function matchesCapabilityDependency(capability, dependencyName) {
+  const dependencies = Array.isArray(capability?.dependencies) ? capability.dependencies : [];
+  return dependencies.some((dependency) => {
+    const name = typeof dependency === 'string' ? dependency : dependency?.capability;
+    return name === dependencyName;
+  });
+}
+
+function matchesCapabilityQuery(capability, query) {
+  const haystack = [
+    capability?.name,
+    capability?.description,
+    capability?.resource,
+    capability?.action,
+    capability?.domain,
+    capability?.group,
+    capability?.version,
+    ...(Array.isArray(capability?.tags) ? capability.tags : []),
+    ...(Array.isArray(capability?.permissions) ? capability.permissions : []),
+    ...(Array.isArray(capability?.dependencies) ? capability.dependencies.map((dependency) => typeof dependency === 'string' ? dependency : dependency?.capability) : [])
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === '[object Object]';
 }

@@ -154,6 +154,18 @@ Audit events can be rendered for trusted review:
 const auditViewerHTML = renderAuditViewerToHTML(runtime.getAuditEvents());
 ```
 
+Capabilities can be browsed and filtered before registration or release:
+
+```js
+const capabilityBrowserHTML = renderCapabilityBrowserToHTML(runtime.listCapabilities(), {
+  query: 'organization',
+  filter: {
+    resource: 'organization',
+    permission: 'organization:create'
+  }
+});
+```
+
 ## Why This Matters
 
 This mechanism gives PIVOT a hard boundary:

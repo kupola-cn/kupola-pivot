@@ -121,6 +121,6 @@ Typical stages include:
 - `plan.node`
 - `plan.compensation`
 
-`@kupola/pivot-ui` can render timelines, timeline detail views, audit viewers, and results as escaped HTML strings or mount them into DOM elements. The renderer is intentionally small and framework-neutral.
+`@kupola/pivot-ui` can render timelines, timeline detail views, audit viewers, plan previews, and results as escaped HTML strings or mount them into DOM elements. The renderer is intentionally small and framework-neutral.
 
 Default browser styles are exported from `@kupola/pivot/css` and `@kupola/pivot-ui/css`. Apps can override the CSS variables or the generated classes.
