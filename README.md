@@ -156,6 +156,7 @@ Every command and plan result can include `explain.timeline`, a UI-ready list of
 ```js
 const html = renderResultToHTML(result);
 const browser = renderCapabilityBrowserToHTML(runtime.listCapabilities());
+const graph = renderPlanGraphToHTML(planPreview);
 ```
 
 Optional default styles are available:

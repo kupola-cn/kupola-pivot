@@ -203,6 +203,49 @@ export function renderPlanPreviewToHTML(preview, options = {}) {
   ].join('');
 }
 
+export function renderPlanGraphToHTML(value, options = {}) {
+  const className = options.className ?? 'pivot-plan-graph';
+  const emptyText = options.emptyText ?? 'No plan graph available.';
+  const graph = normalizePlanGraphInput(value);
+
+  if (!graph || graph.entries.length === 0) {
+    return `<section class="${escapeAttr(className)} pivot-plan-graph--empty"><div class="pivot-plan-graph__empty">${escapeHTML(emptyText)}</div></section>`;
+  }
+
+  const title = options.title ?? graph.plan?.intent ?? graph.plan?.id ?? 'Plan graph';
+  const message = options.message ?? `Showing ${graph.entries.length} nodes across ${graph.layout.layers.length} layers.`;
+  const graphId = createPlanGraphId();
+  const summary = summarizePlanGraph(graph);
+
+  return [
+    `<section class="${escapeAttr(className)}">`,
+    '<header class="pivot-plan-graph__header">',
+    `<strong class="pivot-plan-graph__title">${escapeHTML(title)}</strong>`,
+    `<div class="pivot-plan-graph__message">${escapeHTML(message)}</div>`,
+    '</header>',
+    '<div class="pivot-plan-graph__summary">',
+    renderPlanGraphSummaryItem('Nodes', summary.nodes),
+    renderPlanGraphSummaryItem('Edges', summary.edges),
+    renderPlanGraphSummaryItem('Layers', summary.layers),
+    renderPlanGraphSummaryItem('Approval nodes', summary.approvals),
+    renderPlanGraphSummaryItem('Conditional edges', summary.conditionalEdges),
+    graph.previewMode ? renderPlanGraphSummaryItem('Ready', summary.ready) : '',
+    graph.previewMode ? renderPlanGraphSummaryItem('Blocked', summary.blocked) : '',
+    graph.previewMode ? renderPlanGraphSummaryItem('Skipped', summary.skipped) : '',
+    '</div>',
+    '<div class="pivot-plan-graph__viewport">',
+    `<div class="pivot-plan-graph__canvas" style="width:${graph.layout.width}px;height:${graph.layout.height}px;">`,
+    options.showEdges !== false ? renderPlanGraphEdges(graph, graphId) : '',
+    '<ol class="pivot-plan-graph__nodes">',
+    ...graph.layout.nodes.map((entry) => renderPlanGraphNode(entry, graph.layout)),
+    '</ol>',
+    '</div>',
+    '</div>',
+    options.includeEdgeList === false ? '' : renderPlanGraphEdgeList(graph),
+    '</section>'
+  ].join('');
+}
+
 export function mountTimeline(target, timeline = [], options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderTimelineToHTML(timeline, options);
@@ -236,6 +279,12 @@ export function mountAuditViewer(target, audits = [], options = {}) {
 export function mountCapabilityBrowser(target, capabilities = [], options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderCapabilityBrowserToHTML(capabilities, options);
+  return element;
+}
+
+export function mountPlanGraph(target, value, options = {}) {
+  const element = resolveTarget(target);
+  element.innerHTML = renderPlanGraphToHTML(value, options);
   return element;
 }
 
@@ -516,6 +565,19 @@ function renderCapabilityBrowserEntry(capability, index) {
   ].join('');
 }
 
+function renderPlanGraphSummaryItem(label, value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-plan-graph__summary-item">',
+    `<span class="pivot-plan-graph__summary-label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-plan-graph__summary-value">${escapeHTML(value)}</span>`,
+    '</div>'
+  ].join('');
+}
+
 function renderCapabilityField(label, value) {
   if (value === undefined || value === null || value === '') {
     return '';
@@ -721,6 +783,428 @@ function matchesCapabilityQuery(capability, query) {
   return haystack.includes(query);
 }
 
+function summarizePlanGraph(graph) {
+  const nodes = graph.entries.length;
+  const edges = graph.edges.length;
+  const layers = graph.layout.layers.length;
+  const approvals = graph.entries.filter((entry) => isPlanGraphApprovalNode(entry.node)).length;
+  const conditionalEdges = graph.edges.filter((edge) => hasPlanGraphEdgeCondition(edge.condition)).length;
+  const ready = graph.entries.filter((entry) => getPlanGraphNodeStatus(entry) === 'ready').length;
+  const blocked = graph.entries.filter((entry) => getPlanGraphNodeStatus(entry) === 'blocked').length;
+  const skipped = graph.entries.filter((entry) => getPlanGraphNodeStatus(entry) === 'skipped').length;
+
+  return {
+    nodes,
+    edges,
+    layers,
+    approvals,
+    conditionalEdges,
+    ready,
+    blocked,
+    skipped
+  };
+}
+
+function normalizePlanGraphInput(value) {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+
+  const previewData = isPlainObject(value?.data) ? value.data : null;
+  const plan = isPlainObject(previewData?.plan)
+    ? previewData.plan
+    : isPlainObject(value?.plan)
+      ? value.plan
+      : isPlainObject(value) && Array.isArray(value.nodes)
+        ? value
+        : null;
+
+  const previewNodes = Array.isArray(previewData?.nodes) ? previewData.nodes : null;
+  const entries = previewNodes
+    ? previewNodes.map((entry) => ({
+        node: isPlainObject(entry?.node) ? entry.node : {},
+        command: entry?.command ?? null,
+        preview: isPlainObject(entry?.preview)
+          ? entry.preview
+          : isPlainObject(entry?.result)
+            ? entry.result
+            : null
+      }))
+    : Array.isArray(plan?.nodes)
+      ? plan.nodes.map((node) => ({
+          node: isPlainObject(node) ? node : {},
+          command: null,
+          preview: null
+        }))
+      : [];
+  const normalizedEntries = entries.filter((entry) => String(entry?.node?.id ?? '').trim() !== '');
+
+  const edges = Array.isArray(plan?.edges)
+    ? plan.edges.filter((edge) => isPlainObject(edge))
+    : Array.isArray(value?.edges)
+      ? value.edges.filter((edge) => isPlainObject(edge))
+      : [];
+
+  const layout = buildPlanGraphLayout(normalizedEntries, edges);
+
+  return {
+    plan,
+    entries: normalizedEntries,
+    edges,
+    layout,
+    previewMode: Boolean(previewNodes)
+  };
+}
+
+function buildPlanGraphLayout(entries, edges) {
+  const nodeWidth = 220;
+  const nodeHeight = 120;
+  const columnGap = 72;
+  const rowGap = 24;
+  const nodesById = new Map();
+  const positions = new Map();
+  const incomingCounts = new Map();
+  const outgoingCounts = new Map();
+  const indegree = new Map();
+  const adjacency = new Map();
+  const orderIndexById = new Map();
+
+  entries.forEach((entry, index) => {
+    const id = String(entry?.node?.id ?? '').trim();
+
+    if (!id) {
+      return;
+    }
+
+    nodesById.set(id, entry);
+    incomingCounts.set(id, 0);
+    outgoingCounts.set(id, 0);
+    indegree.set(id, 0);
+    adjacency.set(id, []);
+    orderIndexById.set(id, index);
+  });
+
+  for (const edge of edges) {
+    const from = String(edge?.from ?? '').trim();
+    const to = String(edge?.to ?? '').trim();
+
+    if (!from || !to || !nodesById.has(from) || !nodesById.has(to) || from === to) {
+      continue;
+    }
+
+    adjacency.get(from).push(to);
+    indegree.set(to, (indegree.get(to) ?? 0) + 1);
+    incomingCounts.set(to, (incomingCounts.get(to) ?? 0) + 1);
+    outgoingCounts.set(from, (outgoingCounts.get(from) ?? 0) + 1);
+  }
+
+  const layerById = new Map();
+  const queue = Array.from(indegree.entries())
+    .filter(([, count]) => count === 0)
+    .sort((left, right) => (orderIndexById.get(left[0]) ?? 0) - (orderIndexById.get(right[0]) ?? 0))
+    .map(([id]) => id);
+  let cursor = 0;
+
+  for (const id of queue) {
+    layerById.set(id, 0);
+  }
+
+  while (cursor < queue.length) {
+    const sourceId = queue[cursor];
+    cursor += 1;
+    const sourceLayer = layerById.get(sourceId) ?? 0;
+
+    for (const targetId of adjacency.get(sourceId) ?? []) {
+      const nextLayer = Math.max(layerById.get(targetId) ?? 0, sourceLayer + 1);
+      layerById.set(targetId, nextLayer);
+
+      const nextIndegree = (indegree.get(targetId) ?? 0) - 1;
+      indegree.set(targetId, nextIndegree);
+
+      if (nextIndegree === 0) {
+        queue.push(targetId);
+      }
+    }
+  }
+
+  let fallbackLayer = (Math.max(0, ...layerById.values()) ?? 0) + 1;
+
+  for (const entry of entries) {
+    const id = String(entry?.node?.id ?? '').trim();
+
+    if (!id || layerById.has(id)) {
+      continue;
+    }
+
+    layerById.set(id, fallbackLayer);
+    fallbackLayer += 1;
+  }
+
+  const layers = [];
+
+  for (const entry of entries) {
+    const id = String(entry?.node?.id ?? '').trim();
+
+    if (!id) {
+      continue;
+    }
+
+    const layerIndex = layerById.get(id) ?? 0;
+
+    if (!layers[layerIndex]) {
+      layers[layerIndex] = [];
+    }
+
+    layers[layerIndex].push(entry);
+  }
+
+  const compactLayers = layers.filter((layer) => Array.isArray(layer) && layer.length > 0)
+    .map((layer) => layer.sort((left, right) => (orderIndexById.get(String(left?.node?.id ?? '')) ?? 0) - (orderIndexById.get(String(right?.node?.id ?? '')) ?? 0)));
+
+  compactLayers.forEach((layer, layerIndex) => {
+    layer.forEach((entry, rowIndex) => {
+      const id = String(entry?.node?.id ?? '').trim();
+
+      if (!id) {
+        return;
+      }
+
+      positions.set(id, {
+        x: layerIndex * (nodeWidth + columnGap),
+        y: rowIndex * (nodeHeight + rowGap),
+        layerIndex,
+        rowIndex
+      });
+    });
+  });
+
+  const width = Math.max(nodeWidth, compactLayers.length * nodeWidth + Math.max(0, compactLayers.length - 1) * columnGap);
+  const maxRows = compactLayers.reduce((maximum, layer) => Math.max(maximum, layer.length), 1);
+  const height = Math.max(nodeHeight, maxRows * nodeHeight + Math.max(0, maxRows - 1) * rowGap);
+
+  return {
+    nodes: entries,
+    entries,
+    edges,
+    layers: compactLayers,
+    positions,
+    incomingCounts,
+    outgoingCounts,
+    width,
+    height,
+    nodeWidth,
+    nodeHeight,
+    columnGap,
+    rowGap
+  };
+}
+
+function renderPlanGraphEdges(graph, graphId) {
+  const paths = graph.edges.map((edge, index) => {
+    const fromPosition = graph.layout.positions.get(String(edge?.from ?? '').trim());
+    const toPosition = graph.layout.positions.get(String(edge?.to ?? '').trim());
+
+    if (!fromPosition || !toPosition) {
+      return '';
+    }
+
+    const startX = fromPosition.x + graph.layout.nodeWidth;
+    const startY = fromPosition.y + (graph.layout.nodeHeight / 2);
+    const endX = toPosition.x;
+    const endY = toPosition.y + (graph.layout.nodeHeight / 2);
+    const midX = startX + Math.max(24, (endX - startX) / 2);
+    const edgeStatus = hasPlanGraphEdgeCondition(edge?.condition) ? 'conditional' : 'default';
+    const label = describePlanEdgeCondition(edge?.condition);
+
+    return [
+      `<path class="pivot-plan-graph__edge-line pivot-plan-graph__edge-line--${escapeAttr(edgeStatus)}" d="M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}" marker-end="url(#${escapeAttr(graphId)}-arrow)">`,
+      `<title>${escapeHTML(`${edge?.from} -> ${edge?.to}${label ? ` (${label})` : ''}`)}</title>`,
+      '</path>'
+    ].join('');
+  }).join('');
+
+  return [
+    `<svg class="pivot-plan-graph__edges" viewBox="0 0 ${graph.layout.width} ${graph.layout.height}" aria-hidden="true">`,
+    '<defs>',
+    `<marker id="${escapeAttr(graphId)}-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">`,
+    '<path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor"></path>',
+    '</marker>',
+    '</defs>',
+    paths,
+    '</svg>'
+  ].join('');
+}
+
+function renderPlanGraphNode(entry, layout) {
+  const node = isPlainObject(entry?.node) ? entry.node : {};
+  const preview = isPlainObject(entry?.preview) ? entry.preview : null;
+  const id = String(node.id ?? '').trim();
+  const position = layout.positions.get(id) ?? {
+    x: 0,
+    y: 0,
+    layerIndex: 0,
+    rowIndex: 0
+  };
+  const status = getPlanGraphNodeStatus(entry);
+  const kind = getPlanGraphNodeKind(node);
+  const capability = node.capability ?? '';
+  const intent = node.intent ?? '';
+  const previewMessage = preview?.message ?? '';
+  const incoming = layout.incomingCounts.get(id) ?? 0;
+  const outgoing = layout.outgoingCounts.get(id) ?? 0;
+
+  return [
+    `<li class="pivot-plan-graph__node pivot-plan-graph__node--${escapeAttr(status)}" data-node-id="${escapeAttr(id)}" data-layer="${escapeAttr(position.layerIndex)}" data-row="${escapeAttr(position.rowIndex)}" style="left:${position.x}px;top:${position.y}px;width:${layout.nodeWidth}px;height:${layout.nodeHeight}px;">`,
+    '<article class="pivot-plan-graph__card">',
+    '<div class="pivot-plan-graph__node-header">',
+    `<span class="pivot-plan-graph__node-id">${escapeHTML(id)}</span>`,
+    `<span class="pivot-plan-graph__node-status">${escapeHTML(status)}</span>`,
+    '</div>',
+    `<div class="pivot-plan-graph__node-kind">${escapeHTML(kind)}</div>`,
+    capability ? `<div class="pivot-plan-graph__node-capability">${escapeHTML(capability)}</div>` : '',
+    intent ? `<div class="pivot-plan-graph__node-intent">${escapeHTML(intent)}</div>` : '',
+    `<div class="pivot-plan-graph__node-meta">${escapeHTML(`In ${incoming} / Out ${outgoing}`)}</div>`,
+    previewMessage ? `<div class="pivot-plan-graph__node-message">${escapeHTML(previewMessage)}</div>` : '',
+    '</article>',
+    '</li>'
+  ].join('');
+}
+
+function renderPlanGraphEdgeList(graph) {
+  if (!Array.isArray(graph.edges) || graph.edges.length === 0) {
+    return '';
+  }
+
+  return [
+    '<ol class="pivot-plan-graph__edge-list">',
+    ...graph.edges.map((edge) => {
+      const label = describePlanEdgeCondition(edge?.condition);
+      const from = String(edge?.from ?? '');
+      const to = String(edge?.to ?? '');
+
+      return [
+        '<li class="pivot-plan-graph__edge-item">',
+        `<span class="pivot-plan-graph__edge-label">${escapeHTML(`${from} -> ${to}`)}</span>`,
+        label ? `<span class="pivot-plan-graph__edge-condition">${escapeHTML(label)}</span>` : '',
+        '</li>'
+      ].join('');
+    }),
+    '</ol>'
+  ].join('');
+}
+
+function getPlanGraphNodeStatus(entry) {
+  const node = isPlainObject(entry?.node) ? entry.node : {};
+  const preview = isPlainObject(entry?.preview) ? entry.preview : null;
+
+  if (preview?.data?.skipped) {
+    return 'skipped';
+  }
+
+  if (node.type === 'approval' || node.type === 'human-approval') {
+    return preview ? (preview.ok ? 'approval' : 'blocked') : 'approval';
+  }
+
+  if (preview) {
+    return preview.ok ? 'ready' : 'blocked';
+  }
+
+  return node.capability ? 'planned' : 'node';
+}
+
+function getPlanGraphNodeKind(node) {
+  if (!isPlainObject(node)) {
+    return 'node';
+  }
+
+  if (node.type === 'approval' || node.type === 'human-approval') {
+    return 'approval node';
+  }
+
+  if (node.capability) {
+    return 'capability node';
+  }
+
+  return 'workflow node';
+}
+
+function isPlanGraphApprovalNode(node) {
+  return isPlainObject(node) && (node.type === 'approval' || node.type === 'human-approval');
+}
+
+function hasPlanGraphEdgeCondition(condition) {
+  if (condition === undefined || condition === null || condition === '') {
+    return false;
+  }
+
+  if (typeof condition === 'string') {
+    return condition !== 'always';
+  }
+
+  return true;
+}
+
+function describePlanEdgeCondition(condition) {
+  if (condition === undefined || condition === null || condition === '' || condition === 'always') {
+    return '';
+  }
+
+  if (typeof condition === 'string') {
+    return condition;
+  }
+
+  if (!isPlainObject(condition)) {
+    return String(condition);
+  }
+
+  const parts = [];
+
+  if (Object.hasOwn(condition, 'ok')) {
+    parts.push(`ok=${condition.ok}`);
+  }
+
+  if (Object.hasOwn(condition, 'skipped')) {
+    parts.push(`skipped=${condition.skipped}`);
+  }
+
+  if (typeof condition.path === 'string' && condition.path) {
+    parts.push(`path=${condition.path}`);
+  }
+
+  if (Object.hasOwn(condition, 'exists')) {
+    parts.push(`exists=${condition.exists}`);
+  }
+
+  if (Object.hasOwn(condition, 'equals')) {
+    parts.push(`equals=${formatPlanGraphValue(condition.equals)}`);
+  }
+
+  if (Object.hasOwn(condition, 'notEquals')) {
+    parts.push(`notEquals=${formatPlanGraphValue(condition.notEquals)}`);
+  }
+
+  if (Array.isArray(condition.in)) {
+    parts.push(`in=${formatPlanGraphValue(condition.in)}`);
+  }
+
+  return parts.join(' ');
+}
+
+function formatPlanGraphValue(value) {
+  try {
+    return JSON.stringify(value, createJsonReplacer());
+  } catch {
+    return String(value);
+  }
+}
+
 function isPlainObject(value) {
   return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+let planGraphSequence = 0;
+
+function createPlanGraphId() {
+  planGraphSequence += 1;
+  return `pivot-plan-graph-${planGraphSequence}`;
 }

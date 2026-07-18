@@ -30,7 +30,7 @@ export {
   mapHttpStatusToPolicy
 } from '@kupola/pivot-policy';
 export { addEdge, addNode, createPlan, evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
-export { createTrustedUIAdapter, mountAuditViewer, mountCapabilityBrowser, mountPlanPreview, mountResult, mountTimeline, mountTimelineDetail, renderAuditViewerToHTML, renderCapabilityBrowserToHTML, renderPlanPreviewToHTML, renderResultToHTML, renderTimelineDetailToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
+export { createTrustedUIAdapter, mountAuditViewer, mountCapabilityBrowser, mountPlanGraph, mountPlanPreview, mountResult, mountTimeline, mountTimelineDetail, renderAuditViewerToHTML, renderCapabilityBrowserToHTML, renderPlanGraphToHTML, renderPlanPreviewToHTML, renderResultToHTML, renderTimelineDetailToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
 import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, createValidationResult, redactParams, validateCommand, validateParams } from '@kupola/pivot-protocol';

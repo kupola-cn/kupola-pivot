@@ -25,6 +25,28 @@ export interface TrustedUIAdapter {
   closeAssistant(): void;
 }
 
+export interface PivotPlanGraphPreviewNode {
+  node: PivotPlanNode;
+  command: PivotCommand | null;
+  preview: PivotResult;
+}
+
+export interface PivotPlanGraphPreviewData {
+  plan: PivotPlan;
+  nodes: PivotPlanGraphPreviewNode[];
+  status: 'ready' | 'blocked';
+  requiresConfirmation: boolean;
+}
+
+export interface PivotPlanGraphOptions {
+  className?: string;
+  emptyText?: string;
+  title?: string;
+  message?: string;
+  showEdges?: boolean;
+  includeEdgeList?: boolean;
+}
+
 export function createTrustedUIAdapter(adapter?: Partial<TrustedUIAdapter>): TrustedUIAdapter;
 export function renderTimelineToHTML(timeline?: unknown[], options?: {
   className?: string;
@@ -85,6 +107,7 @@ export function renderPlanPreviewToHTML(preview: PivotResult<{
   includeNodes?: boolean;
   emptyText?: string;
 }): string;
+export function renderPlanGraphToHTML(plan: PivotPlan | PivotPlanGraphPreviewData | PivotResult<PivotPlanGraphPreviewData>, options?: PivotPlanGraphOptions): string;
 export function mountTimeline<TElement extends Element>(target: string | TElement, timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
@@ -129,6 +152,7 @@ export function mountCapabilityBrowser<TElement extends Element>(target: string 
     allowUnknownParams?: boolean;
   };
 }): TElement | Element;
+export function mountPlanGraph<TElement extends Element>(target: string | TElement, plan: PivotPlan | PivotPlanGraphPreviewData | PivotResult<PivotPlanGraphPreviewData>, options?: PivotPlanGraphOptions): TElement | Element;
 export function mountPlanPreview<TElement extends Element>(target: string | TElement, preview: PivotResult<{
   plan: PivotPlan;
   nodes: Array<{

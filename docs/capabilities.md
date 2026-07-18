@@ -142,6 +142,12 @@ Plan previews can be rendered with the UI package as plain HTML:
 const planPreviewHTML = renderPlanPreviewToHTML(previewPlanResult);
 ```
 
+Plan graphs can be rendered from the preview result or the raw plan:
+
+```js
+const planGraphHTML = renderPlanGraphToHTML(previewPlanResult);
+```
+
 Execution timelines can be rendered as a detail view:
 
 ```js

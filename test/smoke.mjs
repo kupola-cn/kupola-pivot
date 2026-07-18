@@ -12,6 +12,7 @@ import {
   parseStructuredPlanOutput,
   renderAuditViewerToHTML,
   renderCapabilityBrowserToHTML,
+  renderPlanGraphToHTML,
   renderPlanPreviewToHTML,
   renderTimelineDetailToHTML,
   redactParams,
@@ -1325,6 +1326,30 @@ const resultHTML = renderResultToHTML(failingPlanResult);
 const planPreviewHTML = renderPlanPreviewToHTML(planPreview);
 const timelineDetailHTML = renderTimelineDetailToHTML(result);
 const auditViewerHTML = renderAuditViewerToHTML(auditRuntime.getAuditEvents());
+const planGraphHTML = renderPlanGraphToHTML(conditionalPlanResult);
+const escapedPlanGraphHTML = renderPlanGraphToHTML({
+  plan: {
+    id: '<script>plan</script>',
+    intent: '<script>graph</script>',
+    nodes: [
+      {
+        id: '<node>',
+        capability: '<capability>',
+        intent: '<intent>'
+      }
+    ],
+    edges: [
+      {
+        from: '<node>',
+        to: '<node>',
+        condition: {
+          path: 'data.kind',
+          equals: '<img src=x>'
+        }
+      }
+    ]
+  }
+});
 const capabilityBrowserHTML = renderCapabilityBrowserToHTML(manifestRegistry.list(), {
   query: 'team',
   filter: {
@@ -1340,12 +1365,20 @@ const filteredCapabilityBrowserHTML = renderCapabilityBrowserToHTML(runtime.list
   }
 });
 
-if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail') || !auditViewerHTML.includes('pivot-audit-viewer') || !capabilityBrowserHTML.includes('pivot-capability-browser')) {
+if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail') || !auditViewerHTML.includes('pivot-audit-viewer') || !capabilityBrowserHTML.includes('pivot-capability-browser') || !planGraphHTML.includes('pivot-plan-graph')) {
   throw new Error('Expected UI renderers to produce timeline and result markup.');
 }
 
 if (!planPreviewHTML.includes('pivot-plan-preview__node') || !planPreviewHTML.includes('validate-parent')) {
   throw new Error('Expected plan preview renderer to include node summaries.');
+}
+
+if (!planGraphHTML.includes('pivot-plan-graph__edge-line--conditional') || !planGraphHTML.includes('create-branch-condition') || !planGraphHTML.includes('skipped')) {
+  throw new Error('Expected plan graph renderer to include conditional edges and node statuses.');
+}
+
+if (escapedPlanGraphHTML.includes('<script>') || escapedPlanGraphHTML.includes('<img') || escapedPlanGraphHTML.includes('<node>')) {
+  throw new Error('Expected plan graph renderer to escape HTML content.');
 }
 
 if (!capabilityBrowserHTML.includes('team.create') || !capabilityBrowserHTML.includes('pivot-capability-browser__token--permission') || !capabilityBrowserHTML.includes('pivot-capability-browser__detail-label')) {
@@ -1391,8 +1424,8 @@ if (escapedHTML.includes('<script>') || escapedHTML.includes('<img')) {
 
 const css = readFileSync(new URL('../packages/ui/src/pivot.css', import.meta.url), 'utf8');
 
-if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline') || !css.includes('.pivot-capability-browser')) {
-  throw new Error('Expected default PIVOT UI CSS to include result and timeline styles.');
+if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline') || !css.includes('.pivot-capability-browser') || !css.includes('.pivot-plan-graph')) {
+  throw new Error('Expected default PIVOT UI CSS to include result, timeline, capability, and graph styles.');
 }
 
 console.log('PIVOT smoke test passed.');

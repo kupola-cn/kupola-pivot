@@ -397,6 +397,220 @@
   font-size: 13px;
 }
 
+.pivot-plan-graph {
+  color: var(--pivot-color-text);
+  background: var(--pivot-color-bg);
+  border: 1px solid var(--pivot-color-border);
+  border-radius: var(--pivot-radius);
+  font-family: var(--pivot-font);
+  padding: 12px;
+}
+
+.pivot-plan-graph__header {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.pivot-plan-graph__title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.pivot-plan-graph__message {
+  color: var(--pivot-color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pivot-plan-graph__summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  margin-bottom: 12px;
+}
+
+.pivot-plan-graph__summary-item {
+  background: var(--pivot-color-surface);
+  border: 1px solid var(--pivot-color-border);
+  border-radius: var(--pivot-radius);
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.pivot-plan-graph__summary-label {
+  color: var(--pivot-color-muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pivot-plan-graph__summary-value {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.pivot-plan-graph__viewport {
+  overflow: auto;
+  padding-bottom: 4px;
+}
+
+.pivot-plan-graph__canvas {
+  position: relative;
+  min-height: 100%;
+}
+
+.pivot-plan-graph__edges {
+  color: var(--pivot-color-info);
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.pivot-plan-graph__edge-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.pivot-plan-graph__edge-line--conditional {
+  color: var(--pivot-color-warning);
+  stroke-dasharray: 5 4;
+}
+
+.pivot-plan-graph__edge-line--default {
+  color: var(--pivot-color-info);
+}
+
+.pivot-plan-graph__nodes {
+  display: block;
+  list-style: none;
+  margin: 0;
+  min-height: 100%;
+  padding: 0;
+  position: relative;
+  width: 100%;
+}
+
+.pivot-plan-graph__node {
+  min-width: 0;
+  position: absolute;
+}
+
+.pivot-plan-graph__card {
+  background: var(--pivot-color-surface);
+  border: 1px solid var(--pivot-color-border);
+  border-radius: var(--pivot-radius);
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.pivot-plan-graph__node-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.pivot-plan-graph__node-id {
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.pivot-plan-graph__node-status {
+  color: var(--pivot-color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pivot-plan-graph__node-kind {
+  color: var(--pivot-color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pivot-plan-graph__node-capability,
+.pivot-plan-graph__node-intent,
+.pivot-plan-graph__node-message,
+.pivot-plan-graph__node-meta {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.pivot-plan-graph__node-capability,
+.pivot-plan-graph__node-meta {
+  color: var(--pivot-color-muted);
+}
+
+.pivot-plan-graph__node--ready .pivot-plan-graph__card {
+  border-color: var(--pivot-color-success);
+}
+
+.pivot-plan-graph__node--blocked .pivot-plan-graph__card {
+  border-color: var(--pivot-color-danger);
+}
+
+.pivot-plan-graph__node--skipped .pivot-plan-graph__card {
+  opacity: 0.82;
+}
+
+.pivot-plan-graph__node--approval .pivot-plan-graph__card {
+  border-color: var(--pivot-color-warning);
+}
+
+.pivot-plan-graph__edge-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.pivot-plan-graph__edge-item {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.pivot-plan-graph__edge-label {
+  font-weight: 700;
+}
+
+.pivot-plan-graph__edge-condition {
+  color: var(--pivot-color-muted);
+}
+
+.pivot-plan-graph--empty {
+  color: var(--pivot-color-muted);
+  font-family: var(--pivot-font);
+  font-size: 13px;
+}
+
+.pivot-plan-graph__empty {
+  color: var(--pivot-color-muted);
+  font-size: 13px;
+}
+
 .pivot-timeline-detail {
   color: var(--pivot-color-text);
   background: var(--pivot-color-bg);
