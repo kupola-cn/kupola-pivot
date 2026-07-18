@@ -74,6 +74,8 @@ Backend response: 403
 
 The frontend may block early when it already knows the user lacks permission, but it must still handle backend 401/403 as the final source of truth.
 
+For backend-side authentication, authorization, rate limits, and abuse protection examples, see [Backend Security](backend-security.md).
+
 ## Built-In Frontend Policies
 
 PIVOT includes policy helpers for common interaction checks:

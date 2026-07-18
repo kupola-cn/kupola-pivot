@@ -169,6 +169,7 @@ See:
 
 - [Architecture](docs/architecture.md)
 - [AI Integration](docs/ai-integration.md)
+- [Backend Security](docs/backend-security.md)
 - [Capability Registry](docs/capabilities.md)
 - [Security Model](docs/security.md)
 - [Migration Notes](docs/migration.md)
