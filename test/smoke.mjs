@@ -7,6 +7,7 @@ import {
   createPlan,
   createPermissionPolicy,
   createPivotRuntime,
+  createTrustedUIAdapter,
   getExecutionOrder,
   parseStructuredCommandOutput,
   parseStructuredPlanOutput,
@@ -50,6 +51,29 @@ const approvalRuntime = createPivotRuntime({
     }
   }
 });
+
+const assistantEvents = [];
+const assistantUI = createTrustedUIAdapter({
+  openAssistant: (options) => assistantEvents.push({ type: 'open', title: options?.title ?? '' }),
+  closeAssistant: () => assistantEvents.push({ type: 'close' }),
+  confirm: async (input) => {
+    assistantEvents.push({ type: 'confirm', capability: input?.command?.capability ?? '' });
+    return true;
+  }
+});
+
+const assistantApproval = await assistantUI.approve({
+  command: {
+    capability: 'organization.create'
+  }
+});
+
+assistantUI.openAssistant({ title: 'Assistant' });
+assistantUI.closeAssistant();
+
+if (!assistantApproval || assistantEvents.length !== 3 || assistantEvents[0].type !== 'confirm' || assistantEvents[1].type !== 'open' || assistantEvents[2].type !== 'close') {
+  throw new Error('Expected trusted UI adapter confirm fallback and assistant surface hooks to work.');
+}
 
 const rejectionRuntime = createPivotRuntime({
   policies: [createPermissionPolicy()],

@@ -63,6 +63,8 @@ PIVOT should reuse Kupola 2.x for UI primitives and styling where possible:
 - Message and notification for permission and execution feedback
 - Theme tokens for brand and dark mode consistency
 
+See [UI Integration](ui-integration.md) for a Drawer / Modal wiring example.
+
 PIVOT should not copy Kupola 2.x component code unless there is a clear reason. The preferred direction is adapter-based reuse.
 
 ## Business Complexity
