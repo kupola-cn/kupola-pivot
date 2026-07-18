@@ -1,4 +1,5 @@
 await import('./smoke-compatibility.mjs');
+await import('./smoke-service-handoff.mjs');
 await import('./smoke-fixtures.mjs');
 await import('./smoke-command.mjs');
 await import('./smoke-plan.mjs');

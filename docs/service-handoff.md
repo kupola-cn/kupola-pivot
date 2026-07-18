@@ -36,6 +36,8 @@ Accept structured commands or plans, validate them again on the server, and retu
 
 When a capability provides `dryRun`, the backend may call `simulateCommand()` to estimate impact before execution.
 
+Some projects also expose `POST /api/pivot/simulate-command` so the browser can request a dry-run response explicitly when the capability supports it.
+
 Suggested responsibilities:
 
 - validate the command or plan again on the server

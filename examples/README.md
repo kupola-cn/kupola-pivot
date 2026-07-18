@@ -90,3 +90,19 @@ npm run example:ai-workflow-integration
 ```
 
 This example shows an AI-proposed retention workflow moving through structured-output validation feedback, plan preview, trusted approval, execution, compensation, and audit sink export.
+
+## Service Handoff
+
+Path:
+
+```text
+examples/service-handoff
+```
+
+Run:
+
+```bash
+npm run example:service-handoff
+```
+
+This example shows a server-style PIVOT integration with capability metadata, preview, simulation, execution, plan orchestration, approval, compensation, and audit handling.
