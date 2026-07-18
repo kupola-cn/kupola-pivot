@@ -52,3 +52,54 @@ Recommended flow:
 4. close the Drawer after the user responds
 
 The host app owns the Drawer and Modal components. In a Kupola 2.x app, that usually means wiring this adapter to the project's Drawer and Modal primitives instead of importing UI logic into PIVOT itself.
+
+## Kupola 2.x Component Bridge
+
+Kupola 2.x UI primitives are a good shell for PIVOT previews and feedback.
+
+```js
+import {
+  createTrustedUIAdapter,
+  renderTimelineDetailToHTML
+} from '@kupola/pivot';
+
+export function createKupolaPivotBridge(kupola) {
+  return createTrustedUIAdapter({
+    openAssistant(options) {
+      kupola.Drawer.open({
+        title: options?.title ?? 'PIVOT Assistant',
+        content: options?.content ?? ''
+      });
+    },
+    closeAssistant() {
+      kupola.Drawer.close();
+    },
+    async confirm(input) {
+      return kupola.Modal.confirm({
+        title: input.command?.intent ?? 'Confirm command',
+        content: renderTimelineDetailToHTML({
+          ok: true,
+          message: input.policy?.reason ?? 'Confirm command',
+          data: { command: input.command },
+          explain: { timeline: [] }
+        })
+      });
+    },
+    async approve(input) {
+      return kupola.Modal.confirm({
+        title: input.approval?.title ?? 'Approve plan step',
+        content: input.approval?.description ?? ''
+      });
+    }
+  });
+}
+```
+
+Use Kupola components for the shell:
+
+- `Drawer` for browsing capabilities, previews, and plan graphs
+- `Modal` for final confirmation and approval
+- `Table` for compact capability or workflow summaries
+- `Message` for status feedback after execution
+
+The bridge keeps PIVOT responsible for validation, preview, orchestration, and audit data, while Kupola owns the surface and interaction chrome.

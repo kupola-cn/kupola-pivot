@@ -42,3 +42,19 @@ npm run example:assistant-drawer-modal
 ```
 
 This example shows how a host app can wire the trusted UI adapter to Drawer and Modal surfaces for command previews, confirmations, and plan approvals.
+
+## Kupola UI Integration
+
+Path:
+
+```text
+examples/kupola-ui-integration
+```
+
+Run:
+
+```bash
+npm run example:kupola-ui-integration
+```
+
+This example shows how a Kupola 2.x app can use Drawer, Modal, Table, and Message primitives around PIVOT previews and execution.
