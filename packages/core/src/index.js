@@ -117,6 +117,121 @@ export function createPivotRuntime(options = {}) {
     });
   };
 
+  const simulateCommand = async (command, context = {}, options = {}) => {
+    const timeline = [];
+    const executionOptions = normalizeExecutionOptions(options);
+    const validation = registry.validateCommand(command);
+    const capability = registry.get(command?.capability);
+
+    if (!validation.valid) {
+      timeline.push(createTimelineStep('validation', 'failed', 'Command validation failed.', {
+        errors: validation.errors,
+        warnings: validation.warnings
+      }));
+
+      return createResult({
+        ok: false,
+        message: 'Command validation failed.',
+        explain: {
+          errors: validation.errors,
+          warnings: validation.warnings,
+          requiresConfirmation: false,
+          timeline
+        }
+      });
+    }
+
+    timeline.push(createTimelineStep('validation', 'passed', 'Command validation passed.', {
+      warnings: validation.warnings
+    }));
+
+    const policyDecision = await policyPipeline.evaluate({ command, capability, context });
+    timeline.push(createTimelineStep('policy', policyDecision.decision, policyDecision.reason, {
+      policy: policyDecision
+    }));
+
+    if (policyDecision.decision === PolicyDecision.DENY || policyDecision.decision === PolicyDecision.ESCALATE) {
+      return createResult({
+        ok: false,
+        message: policyDecision.reason,
+        explain: {
+          policy: policyDecision,
+          warnings: validation.warnings,
+          timeline
+        }
+      });
+    }
+
+    const requiresConfirmation = needsConfirmation(command, capability, policyDecision);
+    timeline.push(createTimelineStep('simulation', 'started', 'Command simulation started.', {
+      requiresConfirmation
+    }));
+
+    if (typeof capability?.dryRun !== 'function') {
+      timeline.push(createTimelineStep('simulation', 'failed', 'Capability has no dryRun function.'));
+
+      return createResult({
+        ok: false,
+        message: 'Capability does not define a dryRun function.',
+        explain: {
+          capability: capability?.name ?? '',
+          policy: policyDecision,
+          warnings: validation.warnings,
+          timeline
+        }
+      });
+    }
+
+    try {
+      const simulation = await invokeCapabilityWithTimeout(
+        capability,
+        'dryRun',
+        { command, params: command.params, context },
+        executionOptions.timeoutMs,
+        'Command simulation'
+      );
+
+      timeline.push(createTimelineStep('simulation', 'executed', 'Command simulation completed.', {
+        capability: capability.name
+      }));
+
+      return createResult({
+        ok: true,
+        data: {
+          command: redactCommand(command, capability),
+          capability: toCapabilityPreview(capability),
+          policy: policyDecision,
+          requiresConfirmation,
+          simulation
+        },
+        message: 'Command simulation completed.',
+        explain: {
+          policy: policyDecision,
+          warnings: validation.warnings,
+          timeline
+        }
+      });
+    } catch (error) {
+      const failure = normalizeCapabilityCallError(error, 'Command simulation');
+      timeline.push(createTimelineStep('simulation', failure.timelineStatus, failure.timelineMessage, {
+        error: failure.reason,
+        status: failure.httpStatus
+      }));
+
+      return createResult({
+        ok: false,
+        message: failure.resultMessage,
+        explain: {
+          error: failure.reason,
+          status: failure.httpStatus,
+          policy: policyDecision,
+          warnings: validation.warnings,
+          timeline
+        }
+      });
+    }
+  };
+
   const executeCommand = async (command, context = {}, options = {}) => {
     const timeline = [];
     const executionOptions = normalizeExecutionOptions(options);
@@ -237,10 +352,12 @@ export function createPivotRuntime(options = {}) {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const data = await executeCapabilityWithTimeout(
+        const data = await invokeCapabilityWithTimeout(
           capability,
+          'execute',
           { command, params: command.params, context },
-          executionOptions.timeoutMs
+          executionOptions.timeoutMs,
+          'Command execution'
         );
 
         const message = attempt === 1 ? 'Command executed.' : `Command executed after ${attempt} attempts.`;
@@ -268,7 +385,7 @@ export function createPivotRuntime(options = {}) {
           audit
         });
       } catch (error) {
-        const failure = normalizeExecutionError(error);
+        const failure = normalizeCapabilityCallError(error, 'Command execution');
         lastFailure = failure;
         const canRetry = attempt < maxAttempts && failure.commandStatus === CommandStatus.FAILED;
 
@@ -691,6 +808,7 @@ export function createPivotRuntime(options = {}) {
     },
 
     previewCommand,
+    simulateCommand,
     previewPlan,
     executeCommand,
     executePlan,
@@ -808,7 +926,7 @@ function needsConfirmation(command, capability, policyDecision) {
 }
 
 function toCapabilityPreview(capability) {
-  const { execute: _execute, ...preview } = capability;
+  const { execute: _execute, dryRun: _dryRun, ...preview } = capability;
   return preview;
 }
 
@@ -1376,19 +1494,19 @@ function isPlainObject(value) {
   return Object.prototype.toString.call(value) === '[object Object]';
 }
 
-function normalizeExecutionError(error) {
+function normalizeCapabilityCallError(error, actionLabel = 'Command execution') {
   const httpStatus = getErrorStatus(error);
   const fallbackReason = error instanceof Error ? error.message : String(error);
 
   if (error?.name === 'TimeoutError' || error?.code === 'ETIMEDOUT' || httpStatus === 504) {
     return {
       httpStatus: httpStatus ?? 504,
-      reason: fallbackReason || 'Command execution timed out.',
+      reason: fallbackReason || `${actionLabel} timed out.`,
       decision: null,
       commandStatus: CommandStatus.FAILED,
-      resultMessage: fallbackReason || 'Command execution timed out.',
+      resultMessage: fallbackReason || `${actionLabel} timed out.`,
       timelineStatus: 'timed-out',
-      timelineMessage: 'Command execution timed out.'
+      timelineMessage: `${actionLabel} timed out.`
     };
   }
 
@@ -1433,9 +1551,9 @@ function normalizeExecutionError(error) {
     reason: fallbackReason,
     decision: null,
     commandStatus: CommandStatus.FAILED,
-    resultMessage: 'Command execution failed.',
+    resultMessage: `${actionLabel} failed.`,
     timelineStatus: 'failed',
-    timelineMessage: 'Command execution failed.'
+    timelineMessage: `${actionLabel} failed.`
   };
 }
 
@@ -1552,21 +1670,21 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function executeCapabilityWithTimeout(capability, input, timeoutMs) {
+function invokeCapabilityWithTimeout(capability, methodName, input, timeoutMs, actionLabel = 'Command execution') {
   if (timeoutMs === null) {
-    return capability.execute(input);
+    return capability[methodName](input);
   }
 
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      const error = new Error(`Command execution timed out after ${timeoutMs}ms.`);
+      const error = new Error(`${actionLabel} timed out after ${timeoutMs}ms.`);
       error.name = 'TimeoutError';
       error.status = 504;
       reject(error);
     }, timeoutMs);
 
     Promise.resolve()
-      .then(() => capability.execute(input))
+      .then(() => capability[methodName](input))
       .then((value) => {
         clearTimeout(timer);
         resolve(value);

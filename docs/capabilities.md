@@ -136,6 +136,18 @@ if (preview.ok && preview.data.requiresConfirmation) {
 }
 ```
 
+When a capability exposes a `dryRun` function, use `simulateCommand()` to request a dry-run result without mutating state:
+
+```js
+const simulation = await runtime.simulateCommand(command, context);
+
+if (simulation.ok) {
+  console.log(simulation.data.simulation);
+}
+```
+
+`simulateCommand()` still validates the command and evaluates policies, but it calls the capability's `dryRun` function instead of `execute`. Use this when you need an impact estimate or a safe preview of side effects, while keeping `previewCommand()` as the lighter policy-and-confirmation check.
+
 Plan previews can be rendered with the UI package as plain HTML:
 
 ```js

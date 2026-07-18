@@ -42,6 +42,7 @@ const approvalCalls = [];
 let activeParallelExecutions = 0;
 let maxParallelExecutions = 0;
 let flakyAttempts = 0;
+let simulationCalls = 0;
 const approvalRuntime = createPivotRuntime({
   policies: [createPermissionPolicy()],
   ui: {
@@ -481,6 +482,40 @@ runtime.registerCapability({
   }
 });
 
+const simulationRuntime = createPivotRuntime({
+  policies: [createPermissionPolicy()],
+  ui: {
+    confirm: async () => {
+      throw new Error('Simulation runtime should not request confirmation.');
+    }
+  }
+});
+
+simulationRuntime.registerCapability({
+  name: 'organization.simulate',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.HIGH,
+  permissions: ['organization:create'],
+  requiresConfirmation: true,
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  dryRun: async ({ params }) => {
+    simulationCalls += 1;
+    return {
+      projectedId: 'org-sim-1',
+      projectedName: params.name,
+      projectedParentId: params.parentId,
+      estimatedImpact: 'Would create one branch without mutating state.'
+    };
+  },
+  execute: async () => {
+    throw new Error('Simulation execute should not be called.');
+  }
+});
+
 
 export {
   lastConfirmInput,
@@ -489,12 +524,14 @@ export {
   activeParallelExecutions,
   maxParallelExecutions,
   flakyAttempts,
+  simulationCalls,
   approvalRuntime,
   assistantEvents,
   assistantUI,
   rejectionRuntime,
   auditNotifications,
   auditRuntime,
+  simulationRuntime,
   isolatedRegistry,
   immutableCapability,
   manifestRegistry,

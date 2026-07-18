@@ -37,6 +37,8 @@ import {
   manifestRegistry,
   maxParallelExecutions,
   rejectionRuntime,
+  simulationCalls,
+  simulationRuntime,
   runtime
 } from './smoke-fixtures.mjs';
 
@@ -88,6 +90,14 @@ const invalidStructuredCommandOutput = parseStructuredCommandOutput({
 
 const parsedStructuredCommand = parseStructuredCommandOutput(structuredCommandOutput);
 const parsedTopLevelStructuredCommand = parseStructuredCommandOutput(topLevelStructuredCommandOutput);
+const simulationCommand = createCommand({
+  intent: 'Simulate creating Branch S under the group.',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  capability: 'organization.simulate',
+  risk: RiskLevel.MEDIUM,
+  params: { name: 'Branch S', parentId: 'group' }
+});
 
 if (command.id === secondCommand.id) {
   throw new Error('Expected command IDs to be unique.');
@@ -103,6 +113,29 @@ if (!parsedStructuredCommand.ok || parsedStructuredCommand.data.command.capabili
 
 if (!parsedTopLevelStructuredCommand.ok || parsedTopLevelStructuredCommand.data.command.intent !== topLevelStructuredCommandOutput.intent) {
   throw new Error('Expected top-level structured command output to parse into a command.');
+}
+
+const simulationResult = await simulationRuntime.simulateCommand(simulationCommand, {
+  actor: {
+    id: 'simulation-user',
+    permissions: ['organization:create']
+  }
+});
+
+if (!simulationResult.ok || simulationResult.data.simulation.projectedName !== 'Branch S' || simulationResult.data.requiresConfirmation !== true) {
+  throw new Error('Expected dry-run command simulation to succeed and report simulation data.');
+}
+
+if (simulationResult.data.capability.dryRun !== undefined) {
+  throw new Error('Expected simulated capability preview to omit dryRun implementation details.');
+}
+
+if (simulationCalls !== 1 || simulationResult.audit !== null) {
+  throw new Error('Expected dry-run simulation to call dryRun exactly once without creating an audit event.');
+}
+
+if (!Array.isArray(simulationResult.explain.timeline) || !simulationResult.explain.timeline.some((step) => step.stage === 'simulation' && step.status === 'executed')) {
+  throw new Error('Expected dry-run simulation timeline to include a simulation execution step.');
 }
 
 const unknownParamValidation = validateParams(

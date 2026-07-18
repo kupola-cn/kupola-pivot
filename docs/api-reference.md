@@ -174,6 +174,7 @@ export interface PivotCapability {
   permissions: string[];
   requiresConfirmation: boolean;
   execute?: PivotCapabilityExecutor | null;
+  dryRun?: PivotCapabilityExecutor | null;
   metadata: Record<string, unknown>;
 }
 ```
@@ -940,6 +941,25 @@ export interface PivotExplainTimelineStep {
 }
 ```
 
+### PivotCommandPreviewData
+
+```ts
+export interface PivotCommandPreviewData {
+  command: PivotCommand;
+  capability: Omit<PivotCapability, 'execute' | 'dryRun'>;
+  policy: unknown;
+  requiresConfirmation: boolean;
+}
+```
+
+### PivotCommandSimulationData
+
+```ts
+export interface PivotCommandSimulationData extends PivotCommandPreviewData {
+  simulation: unknown;
+}
+```
+
 ### PivotExplain
 
 ```ts
@@ -991,12 +1011,10 @@ export interface PivotRuntime {
   getCapability(name: string): PivotCapability | null;
   listCapabilities(filter?: PivotCapabilityFilter): PivotCapability[];
   validateCommand(command: PivotCommand): ValidationResult;
-  previewCommand(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<{
-    command: PivotCommand;
-    capability: Omit<PivotCapability, 'execute'>;
-    policy: unknown;
-    requiresConfirmation: boolean;
-  }>>;
+  previewCommand(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<PivotCommandPreviewData>>;
+  simulateCommand(command: PivotCommand, context?: PivotExecutionContext, options?: {
+    timeoutMs?: number;
+  }): Promise<PivotResult<PivotCommandSimulationData>>;
   previewPlan(plan: PivotPlan, context?: PivotExecutionContext): Promise<PivotResult<PivotPlanPreviewData>>;
   executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext, options?: {
     retry?: PivotPlanNodeRetry;

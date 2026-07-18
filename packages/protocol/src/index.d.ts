@@ -102,6 +102,7 @@ export interface PivotCapability {
   permissions: string[];
   requiresConfirmation: boolean;
   execute?: PivotCapabilityExecutor | null;
+  dryRun?: PivotCapabilityExecutor | null;
   metadata: Record<string, unknown>;
 }
 

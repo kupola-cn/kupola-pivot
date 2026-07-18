@@ -69,6 +69,7 @@ export function createCapability(input = {}) {
     permissions: [],
     requiresConfirmation: false,
     execute: null,
+    dryRun: null,
     metadata: {},
     ...input
   };

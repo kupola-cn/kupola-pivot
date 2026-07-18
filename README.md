@@ -57,6 +57,8 @@ PIVOT is currently in Developer Preview. The core API is usable for experiments,
 
 The next 0.3.x line focuses on integration hardening: end-to-end AI proposal to preview to approval to execution examples, stronger UI mount behavior, integration tests, server handoff guidance, and clearer package usage patterns. The 1.0 line will require stable public APIs, compatibility tests, documented security boundaries, production-oriented migration guidance, and verified package publishing discipline.
 
+When a capability provides `dryRun`, use `simulateCommand()` for impact estimation before execution. `previewCommand()` stays the lighter policy-and-confirmation path.
+
 For pilots, `@kupola/pivot` is the easiest starting point because it bundles protocol, policy, orchestrator, and UI helpers. Use `@kupola/pivot-protocol` and `@kupola/pivot-policy` directly when you only need contracts or policy helpers, and add `@kupola/pivot-orchestrator` / `@kupola/pivot-ui` only when that layer is actually needed.
 
 Preview-level surfaces may still evolve between 0.2.x and 0.3.x. The pilot-stable expectation is that command validation, preview, execution, compensation, audit metadata, and trusted UI mount behavior continue to work as documented, even if the surrounding example code and docs keep moving.

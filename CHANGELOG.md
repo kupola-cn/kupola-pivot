@@ -7,6 +7,7 @@
 - AI workflow integration example covering structured-output validation feedback, plan preview, approval, execution, compensation, and audit sink export.
 - Smoke coverage for AI workflow integration with approval gates, compensation records, UI renderers, and audit sink redaction.
 - Accessible mount helpers and region semantics for UI renderers, including empty-state status output and default `aria-live` handling on mounted targets.
+- Command simulation support via `simulateCommand()` and capability-level `dryRun`, for safe impact estimation without execution.
 
 ### Changed
 
