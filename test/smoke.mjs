@@ -32,6 +32,7 @@ const runtime = createPivotRuntime({
 const approvalCalls = [];
 let activeParallelExecutions = 0;
 let maxParallelExecutions = 0;
+let flakyAttempts = 0;
 const approvalRuntime = createPivotRuntime({
   policies: [createPermissionPolicy()],
   ui: {
@@ -354,6 +355,37 @@ runtime.registerCapability({
     await new Promise((resolve) => setTimeout(resolve, 40));
     activeParallelExecutions -= 1;
     return { id: 'parallel-beta' };
+  }
+});
+
+runtime.registerCapability({
+  name: 'organization.flaky',
+  resource: 'organization',
+  action: ActionType.EXECUTE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => {
+    flakyAttempts += 1;
+
+    if (flakyAttempts < 2) {
+      throw new Error('Transient failure.');
+    }
+
+    return { id: 'flaky-success', attempts: flakyAttempts };
+  }
+});
+
+runtime.registerCapability({
+  name: 'organization.slow',
+  resource: 'organization',
+  action: ActionType.EXECUTE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    return { id: 'slow-success' };
   }
 });
 
@@ -703,6 +735,40 @@ const parallelPlan = createPlan({
   edges: []
 });
 
+const retryPlan = createPlan({
+  intent: 'Retry a transient node failure.',
+  nodes: [
+    {
+      id: 'retry-flaky',
+      capability: 'organization.flaky',
+      retry: {
+        maxAttempts: 2,
+        delayMs: 0,
+        backoff: 'fixed'
+      }
+    }
+  ],
+  edges: []
+});
+
+const timeoutPlan = createPlan({
+  intent: 'Timeout a slow node.',
+  nodes: [
+    {
+      id: 'timeout-slow',
+      capability: 'organization.slow',
+      timeout: {
+        ms: 20
+      },
+      retry: {
+        maxAttempts: 2,
+        delayMs: 0
+      }
+    }
+  ],
+  edges: []
+});
+
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const invalidConditionalPlanValidation = validatePlan(invalidConditionalPlan);
@@ -762,6 +828,18 @@ const rejectedApprovalPlanResult = await rejectionRuntime.executePlan(rejectedAp
   }
 });
 const parallelPlanResult = await runtime.executePlan(parallelPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query']
+  }
+});
+const retryPlanResult = await runtime.executePlan(retryPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query']
+  }
+});
+const timeoutPlanResult = await runtime.executePlan(timeoutPlan, {
   actor: {
     id: 'user-1',
     permissions: ['organization:query']
@@ -894,6 +972,22 @@ if (!parallelPlanResult.ok || parallelPlanResult.data.nodes.length !== 2 || maxP
 
 if (!parallelPlanResult.explain.timeline.some((step) => step.stage === 'plan.layer' && step.status === 'started' && step.metadata.parallel)) {
   throw new Error('Expected parallel plan timeline to record a parallel layer.');
+}
+
+if (!retryPlanResult.ok || retryPlanResult.data.nodes[0].result.data.attempts !== 2 || flakyAttempts !== 2) {
+  throw new Error('Expected retry plan execution to retry the flaky node and then succeed.');
+}
+
+if (!retryPlanResult.explain.timeline.some((step) => step.stage === 'execution' && step.status === 'retrying')) {
+  throw new Error('Expected retry plan timeline to include a retry step.');
+}
+
+if (timeoutPlanResult.ok || timeoutPlanResult.data.nodes[0].result.audit?.metadata?.httpStatus !== 504) {
+  throw new Error('Expected timeout plan execution to fail with a timeout status.');
+}
+
+if (!timeoutPlanResult.explain.timeline.some((step) => step.stage === 'execution' && step.status === 'timed-out')) {
+  throw new Error('Expected timeout plan timeline to include a timeout step.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {

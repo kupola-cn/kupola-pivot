@@ -107,8 +107,9 @@ export function createPivotRuntime(options = {}) {
     });
   };
 
-  const executeCommand = async (command, context = {}) => {
+  const executeCommand = async (command, context = {}, options = {}) => {
     const timeline = [];
+    const executionOptions = normalizeExecutionOptions(options);
     const validation = registry.validateCommand(command);
     const capability = registry.get(command?.capability);
 
@@ -217,58 +218,116 @@ export function createPivotRuntime(options = {}) {
       });
     }
 
-    try {
-      const data = await capability.execute({ command, params: command.params, context });
-      timeline.push(createTimelineStep('execution', 'executed', 'Command executed.', {
-        capability: capability.name
-      }));
+    const maxAttempts = executionOptions.retry.maxAttempts;
+    let lastFailure = null;
 
-      const audit = emitAudit({
-        actor: context.actor,
-        intent: command.intent,
-        commandId: command.id,
-        capability: command.capability,
-        decision: policyDecision.decision,
-        status: CommandStatus.EXECUTED,
-        reason: 'Command executed.'
-      });
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const data = await executeCapabilityWithTimeout(
+          capability,
+          { command, params: command.params, context },
+          executionOptions.timeoutMs
+        );
 
-      return createResult({
-        ok: true,
-        data,
-        message: 'Command executed.',
-        explain: { capability: capability.name, policy: policyDecision, timeline },
-        audit
-      });
-    } catch (error) {
-      const failure = normalizeExecutionError(error);
-      timeline.push(createTimelineStep('execution', failure.timelineStatus, failure.timelineMessage, {
-        error: failure.reason,
-        status: failure.httpStatus
-      }));
+        const message = attempt === 1 ? 'Command executed.' : `Command executed after ${attempt} attempts.`;
+        timeline.push(createTimelineStep('execution', 'executed', message, {
+          capability: capability.name,
+          attempt,
+          maxAttempts
+        }));
 
-      const audit = emitAudit({
-        actor: context.actor,
-        intent: command.intent,
-        commandId: command.id,
-        capability: command.capability,
-        decision: failure.decision ?? policyDecision.decision,
-        status: failure.commandStatus,
-        reason: failure.reason,
-        metadata: failure.httpStatus ? { httpStatus: failure.httpStatus } : {}
-      });
+        const audit = emitAudit({
+          actor: context.actor,
+          intent: command.intent,
+          commandId: command.id,
+          capability: command.capability,
+          decision: policyDecision.decision,
+          status: CommandStatus.EXECUTED,
+          reason: message
+        });
 
-      return createResult({
-        ok: false,
-        message: failure.resultMessage,
-        explain: {
-          error: audit.reason,
+        return createResult({
+          ok: true,
+          data,
+          message,
+          explain: { capability: capability.name, policy: policyDecision, attempts: attempt, timeline },
+          audit
+        });
+      } catch (error) {
+        const failure = normalizeExecutionError(error);
+        lastFailure = failure;
+        const canRetry = attempt < maxAttempts && failure.commandStatus === CommandStatus.FAILED;
+
+        timeline.push(createTimelineStep('execution', failure.timelineStatus, canRetry ? 'Command execution attempt failed.' : failure.timelineMessage, {
+          error: failure.reason,
           status: failure.httpStatus,
-          timeline
-        },
-        audit
-      });
+          attempt,
+          maxAttempts,
+          retrying: canRetry
+        }));
+
+        if (canRetry) {
+          const delayMs = getRetryDelay(executionOptions.retry, attempt);
+
+          timeline.push(createTimelineStep('execution', 'retrying', `Retrying command execution in ${delayMs}ms.`, {
+            attempt,
+            nextAttempt: attempt + 1,
+            maxAttempts,
+            delayMs
+          }));
+
+          if (delayMs > 0) {
+            await sleep(delayMs);
+          }
+
+          continue;
+        }
+
+        const audit = emitAudit({
+          actor: context.actor,
+          intent: command.intent,
+          commandId: command.id,
+          capability: command.capability,
+          decision: failure.decision ?? policyDecision.decision,
+          status: failure.commandStatus,
+          reason: failure.reason,
+          metadata: failure.httpStatus ? { httpStatus: failure.httpStatus } : {}
+        });
+
+        return createResult({
+          ok: false,
+          message: failure.resultMessage,
+          explain: {
+            error: audit.reason,
+            status: failure.httpStatus,
+            attempts: attempt,
+            timeline
+          },
+          audit
+        });
+      }
     }
+
+    const audit = emitAudit({
+      actor: context.actor,
+      intent: command.intent,
+      commandId: command.id,
+      capability: command.capability,
+      decision: lastFailure?.decision ?? policyDecision.decision,
+      status: lastFailure?.commandStatus ?? CommandStatus.FAILED,
+      reason: lastFailure?.reason ?? 'Command execution failed.'
+    });
+
+    return createResult({
+      ok: false,
+      message: lastFailure?.resultMessage ?? 'Command execution failed.',
+      explain: {
+        error: audit.reason,
+        attempts: maxAttempts,
+        timeline
+      },
+      audit
+    });
   };
 
   const previewPlan = async (plan, context = {}) => {
@@ -691,7 +750,11 @@ async function executePlanNode({ plan, node, context, registry, executeCommand, 
     plan,
     node,
     planResults: resultsByNodeId
-  });
+  }, getPlanNodeExecutionOptions(node));
+
+  if (Array.isArray(result.explain?.timeline)) {
+    timeline.push(...result.explain.timeline);
+  }
 
   timeline.push(createTimelineStep('plan.node', result.ok ? 'executed' : 'failed', `Plan node ${result.ok ? 'executed' : 'failed'}: ${node.id}`, {
     nodeId: node.id,
@@ -979,6 +1042,18 @@ function normalizeExecutionError(error) {
   const httpStatus = getErrorStatus(error);
   const fallbackReason = error instanceof Error ? error.message : String(error);
 
+  if (error?.name === 'TimeoutError' || error?.code === 'ETIMEDOUT' || httpStatus === 504) {
+    return {
+      httpStatus: httpStatus ?? 504,
+      reason: fallbackReason || 'Command execution timed out.',
+      decision: null,
+      commandStatus: CommandStatus.FAILED,
+      resultMessage: fallbackReason || 'Command execution timed out.',
+      timelineStatus: 'timed-out',
+      timelineMessage: 'Command execution timed out.'
+    };
+  }
+
   if (httpStatus === 401) {
     return {
       httpStatus,
@@ -1030,6 +1105,88 @@ function getErrorStatus(error) {
   const status = error?.status ?? error?.statusCode ?? error?.response?.status;
   const numericStatus = typeof status === 'string' ? Number.parseInt(status, 10) : status;
   return Number.isInteger(numericStatus) ? numericStatus : null;
+}
+
+function normalizeExecutionOptions(options = {}) {
+  const value = options ?? {};
+  return {
+    retry: normalizeRetryOptions(value.retry),
+    timeoutMs: normalizeTimeoutMs(value.timeoutMs)
+  };
+}
+
+function normalizeRetryOptions(retry = {}) {
+  const value = retry ?? {};
+  return {
+    maxAttempts: normalizeRetryAttempts(value.maxAttempts),
+    delayMs: normalizeRetryDelay(value.delayMs),
+    backoff: normalizeRetryBackoff(value.backoff),
+    maxDelayMs: normalizeRetryMaxDelay(value.maxDelayMs)
+  };
+}
+
+function normalizeRetryAttempts(value) {
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function normalizeRetryDelay(value) {
+  return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+function normalizeRetryMaxDelay(value) {
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function normalizeRetryBackoff(value) {
+  return ['fixed', 'linear', 'exponential'].includes(value) ? value : 'fixed';
+}
+
+function normalizeTimeoutMs(value) {
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function getRetryDelay(retry, attempt) {
+  const baseDelay = retry.delayMs;
+  const rawDelay = retry.backoff === 'linear'
+    ? baseDelay * attempt
+    : retry.backoff === 'exponential'
+      ? baseDelay * (2 ** (attempt - 1))
+      : baseDelay;
+  const cappedDelay = retry.maxDelayMs === null ? rawDelay : Math.min(rawDelay, retry.maxDelayMs);
+  return Math.max(0, cappedDelay);
+}
+
+function executeCapabilityWithTimeout(capability, input, timeoutMs) {
+  if (timeoutMs === null) {
+    return capability.execute(input);
+  }
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const error = new Error(`Command execution timed out after ${timeoutMs}ms.`);
+      error.name = 'TimeoutError';
+      error.status = 504;
+      reject(error);
+    }, timeoutMs);
+
+    Promise.resolve()
+      .then(() => capability.execute(input))
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function getPlanNodeExecutionOptions(node) {
+  return {
+    retry: node.retry,
+    timeoutMs: node.timeout?.ms
+  };
 }
 
 function normalizePlanLimits(planLimits = {}) {

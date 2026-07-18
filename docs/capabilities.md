@@ -270,6 +270,30 @@ Each node is converted into a command and executed through the same validation, 
 
 Independent nodes in the same dependency layer may run in parallel. `getExecutionLayers()` returns the layer structure if a host app wants to inspect or visualize it.
 
+Plan nodes may also define execution controls:
+
+```js
+const plan = createPlan({
+  nodes: [
+    {
+      id: 'sync-profile',
+      capability: 'profile.sync',
+      retry: {
+        maxAttempts: 3,
+        delayMs: 100,
+        backoff: 'exponential',
+        maxDelayMs: 1000
+      },
+      timeout: {
+        ms: 5000
+      }
+    }
+  ]
+});
+```
+
+`retry.maxAttempts` counts total execution attempts, including the first one. `timeout.ms` applies to each attempt of the node execution stage. These controls wrap capability execution only; validation, policy checks, approval gates, and dependency checks still run once per node. Timeouts do not cancel external side effects automatically, so capabilities should still be idempotent where possible.
+
 ## Conditional Plan Edges
 
 Plan edges can include declarative conditions. PIVOT does not run arbitrary JavaScript expressions from plans.

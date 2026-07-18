@@ -6,6 +6,8 @@ export interface PivotPlanNode {
   params?: Record<string, unknown>;
   risk?: string;
   intent?: string;
+  retry?: PivotPlanNodeRetry;
+  timeout?: PivotPlanNodeTimeout;
   approval?: {
     title?: string;
     description?: string;
@@ -23,6 +25,17 @@ export interface PivotPlanNode {
   };
   compensateCapability?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface PivotPlanNodeRetry {
+  maxAttempts?: number;
+  delayMs?: number;
+  backoff?: 'fixed' | 'linear' | 'exponential';
+  maxDelayMs?: number;
+}
+
+export interface PivotPlanNodeTimeout {
+  ms?: number;
 }
 
 export interface PivotPlanEdge {

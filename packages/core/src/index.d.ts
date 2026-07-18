@@ -12,7 +12,7 @@ import type {
   ValidationResult
 } from '@kupola/pivot-protocol';
 import type { PivotPolicy } from '@kupola/pivot-policy';
-import type { PivotPlan, PivotPlanNode, PivotPlanValidationOptions } from '@kupola/pivot-orchestrator';
+import type { PivotPlan, PivotPlanNode, PivotPlanNodeRetry, PivotPlanValidationOptions } from '@kupola/pivot-orchestrator';
 import type { TrustedUIAdapter } from '@kupola/pivot-ui';
 
 export interface CapabilityRegistry {
@@ -83,7 +83,10 @@ export interface PivotRuntime {
     status: 'ready' | 'blocked';
     requiresConfirmation: boolean;
   }>>;
-  executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<TData>>;
+  executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext, options?: {
+    retry?: PivotPlanNodeRetry;
+    timeoutMs?: number;
+  }): Promise<PivotResult<TData>>;
   executePlan(plan: PivotPlan, context?: PivotExecutionContext, options?: {
     stopOnError?: boolean;
     compensateOnError?: boolean;

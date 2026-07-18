@@ -89,6 +89,8 @@ This keeps early workflow modeling practical without forcing a visual workflow e
 
 `executePlan(plan, context)` runs a validated directed acyclic plan in dependency order. Independent nodes in the same dependency layer may execute in parallel. Each node resolves a registered capability and is executed through the same command pipeline as `executeCommand`, including validation, policy checks, confirmation, execution, result wrapping, and audit events.
 
+Plan nodes can also request per-node retry and timeout controls. Retries count total execution attempts for the capability execution stage, and timeouts apply to each attempt without changing the DAG semantics or the approval/policy flow around the node.
+
 The default behavior stops on the first failed node. Apps can pass `{ stopOnError: false }` to continue and collect all node results.
 
 Plan edges may include declarative conditions. Conditional branches are evaluated from previous node results during execution, and non-matching branch nodes are marked as skipped instead of calling their capabilities. Conditions are data objects or known string aliases, not executable JavaScript.

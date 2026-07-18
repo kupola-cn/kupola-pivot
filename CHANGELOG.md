@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.13 - Node Retry and Timeout
+
+### Added
+
+- Per-node retry controls with configurable attempts, delay, and backoff.
+- Per-node execution timeouts for capability execution attempts.
+- Smoke coverage for flaky retries and timed-out slow nodes.
+
 ## 0.2.12 - Parallel Plan Layers
 
 ### Added
