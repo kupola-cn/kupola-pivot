@@ -2,6 +2,8 @@
 
 PIVOT is built around one rule: AI should not directly operate data, APIs, DOM, or business state. AI can propose structured intent and plans. PIVOT validates, explains, confirms, executes, and audits them through registered capabilities.
 
+AI provider adapters belong outside the runtime core. They should handle prompt construction, provider calls, and response parsing, then hand structured output back to PIVOT for validation and preview. See [AI Integration](ai-integration.md) for the adapter boundary and failure feedback flow.
+
 ## Layers
 
 ```text

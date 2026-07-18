@@ -168,6 +168,7 @@ PIVOT validates the command, checks the registered capability, evaluates policie
 See:
 
 - [Architecture](docs/architecture.md)
+- [AI Integration](docs/ai-integration.md)
 - [Capability Registry](docs/capabilities.md)
 - [Security Model](docs/security.md)
 - [Migration Notes](docs/migration.md)
