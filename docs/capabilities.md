@@ -110,6 +110,22 @@ if (!parsedCommand.ok) {
 const preview = await runtime.previewCommand(parsedCommand.data.command, context);
 ```
 
+If parsing fails, feed only schema-oriented errors back into the model or authoring UI. Do not execute partial commands and do not ask the model to explain why it should be trusted.
+
+```js
+const parsedCommand = parseStructuredCommandOutput(modelOutput);
+
+if (!parsedCommand.ok) {
+  return {
+    retry: true,
+    feedback: {
+      message: parsedCommand.message,
+      errors: parsedCommand.explain.errors
+    }
+  };
+}
+```
+
 For UI preview before execution:
 
 ```js

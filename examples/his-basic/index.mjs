@@ -5,6 +5,8 @@ import {
   createPlan,
   createPermissionPolicy,
   createPivotRuntime,
+  parseStructuredCommandOutput,
+  parseStructuredPlanOutput,
   mapHttpStatusToPolicy
 } from '@kupola/pivot';
 
@@ -108,12 +110,81 @@ const compensatedPlan = createPlan({
   edges: [{ from: 'create-branch-e', to: 'fail-after-branch-e' }]
 });
 
+const aiCommandOutput = {
+  type: 'command',
+  command: {
+    intent: '在集团下增加分机构F',
+    resource: 'organization',
+    action: ActionType.CREATE,
+    capability: 'organization.create',
+    risk: RiskLevel.MEDIUM,
+    params: {
+      name: '分机构F',
+      parentId: 'group'
+    }
+  }
+};
+
+const aiCommandDraftOutput = {
+  type: 'command',
+  command: {
+    intent: '在集团下增加分机构F'
+  }
+};
+
+const aiPlanOutput = {
+  kind: 'plan',
+  plan: createPlan({
+    intent: '先查询集团，再创建分机构F',
+    nodes: [
+      {
+        id: 'query-group-ai',
+        capability: 'organization.query',
+        params: { id: 'group' }
+      },
+      {
+        id: 'create-branch-f',
+        capability: 'organization.create',
+        params: {
+          name: '分机构F',
+          parentId: { $from: 'query-group-ai', path: 'data.id' }
+        }
+      }
+    ],
+    edges: [{ from: 'query-group-ai', to: 'create-branch-f' }]
+  })
+};
+
+const aiPlanDraftOutput = {
+  kind: 'plan',
+  plan: {
+    id: 'ai-plan-draft',
+    intent: 'broken plan draft',
+    nodes: 'not-an-array',
+    edges: []
+  }
+};
+
 console.log('query roles:', await runtime.executeCommand(queryRoles, adminContext));
 console.log('create branch preview:', await runtime.previewCommand(createBranch, adminContext));
 console.log('create branch:', await runtime.executeCommand(createBranch, adminContext));
 console.log('create branch plan preview:', await runtime.previewPlan(createBranchPlan, adminContext));
 console.log('create branch plan:', await runtime.executePlan(createBranchPlan, adminContext));
 console.log('compensated plan:', await runtime.executePlan(compensatedPlan, adminContext));
+console.log('ai command feedback:', summarizeStructuredOutput(parseStructuredCommandOutput(aiCommandDraftOutput)));
+const parsedAiCommand = parseStructuredCommandOutput(aiCommandOutput);
+if (!parsedAiCommand.ok) {
+  throw new Error(`Expected structured AI command output to parse: ${parsedAiCommand.explain.errors.join('; ')}`);
+}
+console.log('ai command preview:', await runtime.previewCommand(parsedAiCommand.data.command, adminContext));
+console.log('ai command execute:', await runtime.executeCommand(parsedAiCommand.data.command, adminContext));
+console.log('ai plan feedback:', summarizeStructuredOutput(parseStructuredPlanOutput(aiPlanDraftOutput)));
+const parsedAiPlan = parseStructuredPlanOutput(aiPlanOutput);
+if (!parsedAiPlan.ok) {
+  throw new Error(`Expected structured AI plan output to parse: ${parsedAiPlan.explain.errors.join('; ')}`);
+}
+console.log('ai plan preview:', await runtime.previewPlan(parsedAiPlan.data.plan, adminContext));
+console.log('ai plan execute:', await runtime.executePlan(parsedAiPlan.data.plan, adminContext));
 console.log('blocked delete:', await runtime.executeCommand(deleteRole, limitedContext));
 console.log('backend 403:', await runtime.executeCommand(deleteRole, adminContext));
 console.log('audit count:', runtime.getAuditEvents().length);
@@ -260,5 +331,14 @@ function createHisApi() {
 
       return { id, deleted: true };
     }
+  };
+}
+
+function summarizeStructuredOutput(result) {
+  return {
+    ok: result.ok,
+    message: result.message,
+    errors: result.explain?.errors ?? [],
+    warnings: result.explain?.warnings ?? []
   };
 }

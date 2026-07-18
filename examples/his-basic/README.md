@@ -6,6 +6,8 @@ Covered scenarios:
 
 - query roles
 - create a branch organization under the group
+- parse AI structured command output, return validation feedback, then preview and execute
+- parse AI structured plan output, preview the plan, then confirm and execute
 - block unauthorized delete operations through frontend policy
 - map backend `403` responses into user-facing rejection results
 
