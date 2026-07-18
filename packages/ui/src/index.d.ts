@@ -25,6 +25,45 @@ export interface TrustedUIAdapter {
   closeAssistant(): void;
 }
 
+export interface PivotCapabilityFilter {
+  resource?: string;
+  action?: string;
+  permission?: string;
+  permissions?: string[];
+  domain?: string;
+  group?: string;
+  version?: string;
+  risk?: string;
+  tag?: string;
+  tags?: string[];
+  dependency?: string;
+  dependencies?: string[];
+  requiresConfirmation?: boolean;
+  allowUnknownParams?: boolean;
+}
+
+export interface PivotCapabilityBrowserOptions {
+  className?: string;
+  emptyText?: string;
+  title?: string;
+  message?: string;
+  query?: string;
+  filter?: PivotCapabilityFilter;
+}
+
+export interface PivotPlanPreviewNode {
+  node: PivotPlanNode;
+  command: PivotCommand | null;
+  preview: PivotResult;
+}
+
+export interface PivotPlanPreviewData {
+  plan: PivotPlan;
+  nodes: PivotPlanPreviewNode[];
+  status: 'ready' | 'blocked';
+  requiresConfirmation: boolean;
+}
+
 export interface PivotPlanGraphPreviewNode {
   node: PivotPlanNode;
   command: PivotCommand | null;
@@ -38,6 +77,8 @@ export interface PivotPlanGraphPreviewData {
   requiresConfirmation: boolean;
 }
 
+export type PivotPlanGraphInput = PivotPlan | PivotPlanGraphPreviewData | PivotResult<PivotPlanGraphPreviewData>;
+
 export interface PivotPlanGraphOptions {
   className?: string;
   emptyText?: string;
@@ -45,6 +86,13 @@ export interface PivotPlanGraphOptions {
   message?: string;
   showEdges?: boolean;
   includeEdgeList?: boolean;
+}
+
+export interface PivotPlanPreviewOptions {
+  className?: string;
+  includeTimeline?: boolean;
+  includeNodes?: boolean;
+  emptyText?: string;
 }
 
 export function createTrustedUIAdapter(adapter?: Partial<TrustedUIAdapter>): TrustedUIAdapter;
@@ -69,45 +117,9 @@ export function renderAuditViewerToHTML(audits?: PivotAuditEvent[], options?: {
   title?: string;
   message?: string;
 }): string;
-export function renderCapabilityBrowserToHTML(capabilities?: PivotCapability[], options?: {
-  className?: string;
-  emptyText?: string;
-  title?: string;
-  message?: string;
-  query?: string;
-  filter?: {
-    resource?: string;
-    action?: string;
-    permission?: string;
-    permissions?: string[];
-    domain?: string;
-    group?: string;
-    version?: string;
-    risk?: string;
-    tag?: string;
-    tags?: string[];
-    dependency?: string;
-    dependencies?: string[];
-    requiresConfirmation?: boolean;
-    allowUnknownParams?: boolean;
-  };
-}): string;
-export function renderPlanPreviewToHTML(preview: PivotResult<{
-  plan: PivotPlan;
-  nodes: Array<{
-    node: PivotPlanNode;
-    command: PivotCommand | null;
-    preview: PivotResult;
-  }>;
-  status: 'ready' | 'blocked';
-  requiresConfirmation: boolean;
-}>, options?: {
-  className?: string;
-  includeTimeline?: boolean;
-  includeNodes?: boolean;
-  emptyText?: string;
-}): string;
-export function renderPlanGraphToHTML(plan: PivotPlan | PivotPlanGraphPreviewData | PivotResult<PivotPlanGraphPreviewData>, options?: PivotPlanGraphOptions): string;
+export function renderCapabilityBrowserToHTML(capabilities?: PivotCapability[], options?: PivotCapabilityBrowserOptions): string;
+export function renderPlanPreviewToHTML(preview: PivotResult<PivotPlanPreviewData>, options?: PivotPlanPreviewOptions): string;
+export function renderPlanGraphToHTML(plan: PivotPlanGraphInput, options?: PivotPlanGraphOptions): string;
 export function mountTimeline<TElement extends Element>(target: string | TElement, timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
@@ -129,42 +141,6 @@ export function mountAuditViewer<TElement extends Element>(target: string | TEle
   title?: string;
   message?: string;
 }): TElement | Element;
-export function mountCapabilityBrowser<TElement extends Element>(target: string | TElement, capabilities?: PivotCapability[], options?: {
-  className?: string;
-  emptyText?: string;
-  title?: string;
-  message?: string;
-  query?: string;
-  filter?: {
-    resource?: string;
-    action?: string;
-    permission?: string;
-    permissions?: string[];
-    domain?: string;
-    group?: string;
-    version?: string;
-    risk?: string;
-    tag?: string;
-    tags?: string[];
-    dependency?: string;
-    dependencies?: string[];
-    requiresConfirmation?: boolean;
-    allowUnknownParams?: boolean;
-  };
-}): TElement | Element;
-export function mountPlanGraph<TElement extends Element>(target: string | TElement, plan: PivotPlan | PivotPlanGraphPreviewData | PivotResult<PivotPlanGraphPreviewData>, options?: PivotPlanGraphOptions): TElement | Element;
-export function mountPlanPreview<TElement extends Element>(target: string | TElement, preview: PivotResult<{
-  plan: PivotPlan;
-  nodes: Array<{
-    node: PivotPlanNode;
-    command: PivotCommand | null;
-    preview: PivotResult;
-  }>;
-  status: 'ready' | 'blocked';
-  requiresConfirmation: boolean;
-}>, options?: {
-  className?: string;
-  includeTimeline?: boolean;
-  includeNodes?: boolean;
-  emptyText?: string;
-}): TElement | Element;
+export function mountCapabilityBrowser<TElement extends Element>(target: string | TElement, capabilities?: PivotCapability[], options?: PivotCapabilityBrowserOptions): TElement | Element;
+export function mountPlanGraph<TElement extends Element>(target: string | TElement, plan: PivotPlanGraphInput, options?: PivotPlanGraphOptions): TElement | Element;
+export function mountPlanPreview<TElement extends Element>(target: string | TElement, preview: PivotResult<PivotPlanPreviewData>, options?: PivotPlanPreviewOptions): TElement | Element;

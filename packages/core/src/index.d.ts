@@ -13,23 +13,14 @@ import type {
 } from '@kupola/pivot-protocol';
 import type { PivotPolicy } from '@kupola/pivot-policy';
 import type { PivotPlan, PivotPlanNode, PivotPlanNodeRetry, PivotPlanValidationOptions } from '@kupola/pivot-orchestrator';
-import type { TrustedUIAdapter } from '@kupola/pivot-ui';
+import type { PivotCapabilityFilter, PivotPlanPreviewData, TrustedUIAdapter } from '@kupola/pivot-ui';
 
 export interface CapabilityRegistry {
   register(capability: Partial<PivotCapability>): PivotCapability;
   unregister(name: string): boolean;
   get(name: string): PivotCapability | null;
   has(name: string): boolean;
-  list(filter?: {
-    resource?: string;
-    action?: string;
-    permission?: string;
-    domain?: string;
-    group?: string;
-    version?: string;
-    tag?: string;
-    tags?: string[];
-  }): PivotCapability[];
+  list(filter?: PivotCapabilityFilter): PivotCapability[];
   validateCommand(command: PivotCommand): ValidationResult;
   size(): number;
 }
@@ -66,16 +57,7 @@ export interface PivotRuntime {
   ui: TrustedUIAdapter;
   registerCapability(capability: Partial<PivotCapability>): PivotCapability;
   getCapability(name: string): PivotCapability | null;
-  listCapabilities(filter?: {
-    resource?: string;
-    action?: string;
-    permission?: string;
-    domain?: string;
-    group?: string;
-    version?: string;
-    tag?: string;
-    tags?: string[];
-  }): PivotCapability[];
+  listCapabilities(filter?: PivotCapabilityFilter): PivotCapability[];
   validateCommand(command: PivotCommand): ValidationResult;
   previewCommand(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<{
     command: PivotCommand;
@@ -83,16 +65,7 @@ export interface PivotRuntime {
     policy: unknown;
     requiresConfirmation: boolean;
   }>>;
-  previewPlan(plan: PivotPlan, context?: PivotExecutionContext): Promise<PivotResult<{
-    plan: PivotPlan;
-    nodes: Array<{
-      node: PivotPlanNode;
-      command: PivotCommand | null;
-      preview: PivotResult;
-    }>;
-    status: 'ready' | 'blocked';
-    requiresConfirmation: boolean;
-  }>>;
+  previewPlan(plan: PivotPlan, context?: PivotExecutionContext): Promise<PivotResult<PivotPlanPreviewData>>;
   executeCommand<TData = unknown>(command: PivotCommand, context?: PivotExecutionContext, options?: {
     retry?: PivotPlanNodeRetry;
     timeoutMs?: number;
@@ -100,21 +73,27 @@ export interface PivotRuntime {
   executePlan(plan: PivotPlan, context?: PivotExecutionContext, options?: {
     stopOnError?: boolean;
     compensateOnError?: boolean;
-  }): Promise<PivotResult<{
-    plan: PivotPlan;
-    nodes: Array<{
-      node: PivotPlanNode;
-      command: PivotCommand | null;
-      result: PivotResult;
-    }>;
-    compensations: Array<{
-      node: PivotPlanNode;
-      command: PivotCommand | null;
-      result: PivotResult;
-    }>;
-    status: 'executed' | 'failed';
-  }>>;
+  }): Promise<PivotResult<PivotPlanExecutionData>>;
   getAuditEvents(): PivotAuditEvent[];
+}
+
+export interface PivotPlanExecutionNodeResult {
+  node: PivotPlanNode;
+  command: PivotCommand | null;
+  result: PivotResult;
+}
+
+export interface PivotPlanExecutionCompensationResult {
+  node: PivotPlanNode;
+  command: PivotCommand | null;
+  result: PivotResult;
+}
+
+export interface PivotPlanExecutionData {
+  plan: PivotPlan;
+  nodes: PivotPlanExecutionNodeResult[];
+  compensations: PivotPlanExecutionCompensationResult[];
+  status: 'executed' | 'failed';
 }
 
 export function createPivotRuntime(options?: {
