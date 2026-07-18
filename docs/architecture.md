@@ -67,6 +67,15 @@ See [UI Integration](ui-integration.md) for a Drawer / Modal wiring example.
 
 PIVOT should not copy Kupola 2.x component code unless there is a clear reason. The preferred direction is adapter-based reuse.
 
+## Architecture Track
+
+PIVOT is the candidate architecture track for Kupola 3.x AI-native applications, but it should remain usable as an independent advanced runtime. This keeps the runtime useful for two adoption paths:
+
+- Kupola apps can wrap PIVOT with existing Kupola 2.x Drawer, Modal, Table, Form, Message, theme, and notification primitives.
+- Non-Kupola apps can still adopt the protocol, policy, orchestrator, audit, and framework-neutral HTML renderer packages.
+
+The runtime core should not depend on `@kupola/ai-adapter` or provider-specific SDKs. AI adapters prepare prompts, call providers, parse structured output, and hand proposed commands or plans to PIVOT. PIVOT then validates, previews, confirms, executes, and audits through registered capabilities.
+
 ## Business Complexity
 
 Simple CRUD can be modeled as one command. Real business work often needs dependencies between data, rules, and steps.

@@ -31,9 +31,12 @@ User intent
 ## Relationship With Kupola
 
 - `kupola-u` continues to maintain Kupola 2.x and `@kupola/ai-adapter` 2.x.
-- `kupola-pivot` explores the future 3.x architecture or a standalone advanced runtime.
+- `kupola-pivot` is the candidate architecture track for Kupola 3.x AI-native applications, while remaining usable as a standalone advanced runtime.
 - PIVOT can reuse Kupola UI primitives such as Drawer, Modal, Table, Form, Message, theme tokens, and CSS.
+- PIVOT should integrate with `@kupola/ai-adapter` through structured output handoff instead of depending on provider SDKs in the runtime core.
 - PIVOT should not depend on frontend-only permissions for real security. Backend APIs must still enforce authentication, authorization, data scope, and sensitive field protection.
+
+See [Roadmap](docs/roadmap.md) for the 0.3.x integration-preview target, the 1.0 production-ready standard, and the long-term Kupola relationship.
 
 ## Repository Layout
 
@@ -51,6 +54,8 @@ examples/             Future examples, including HIS-style business apps
 ## Current Stage
 
 PIVOT is currently in Developer Preview. The core API is usable for experiments, examples, and early project integration, but it is not yet a production-stable 1.0 contract.
+
+The next 0.3.x line focuses on integration hardening: end-to-end AI proposal to preview to approval to execution examples, stronger UI mount behavior, integration tests, server handoff guidance, and clearer package usage patterns. The 1.0 line will require stable public APIs, compatibility tests, documented security boundaries, production-oriented migration guidance, and verified package publishing discipline.
 
 ## Install
 

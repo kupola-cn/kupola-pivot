@@ -4,6 +4,15 @@
 
 PIVOT does not replace Kupola 2.x immediately. Kupola 2.x remains the stable UI component and `@kupola/ai-adapter` 2.x remains the current AI adapter line.
 
+The long-term direction is adapter-first:
+
+- Kupola 2.x continues to provide UI primitives, theme tokens, and existing application surfaces.
+- `@kupola/ai-adapter` 2.x continues to handle provider calls, prompt construction, response parsing, and provider-specific compatibility.
+- PIVOT handles protocol contracts, capability registration, validation, preview, policy decisions, workflow execution, explain timelines, approvals, compensation, and audit events.
+- Host applications keep ownership of backend APIs, authentication, authorization, tenant scope, data filtering, persistence, rate limits, and abuse protection.
+
+PIVOT is the candidate architecture track for Kupola 3.x AI-native applications, but it should also remain usable as a standalone advanced runtime for projects that do not adopt the full Kupola UI stack.
+
 Use PIVOT when you need:
 
 - explicit capability registration
@@ -38,4 +47,8 @@ Frontend permissions can block obvious invalid operations and show better messag
 
 ## Versioning
 
-`0.2.0` is a Developer Preview. Public APIs are intended to be usable but are not yet final for production 1.0.
+`0.2.x` is a Developer Preview. Public APIs are intended to be usable but are not yet final for production 1.0.
+
+`0.3.x` targets integration hardening for real project pilots: end-to-end AI proposal to preview to approval to execution examples, stronger UI helper behavior, integration tests, server handoff guidance, and clearer package usage patterns.
+
+`1.0` requires stable public APIs, compatibility tests, documented security boundaries, production-oriented migration guidance, and verified package publishing discipline. See [Roadmap](roadmap.md) for the full production-ready standard.
