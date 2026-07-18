@@ -64,6 +64,10 @@ You can also install lower-level packages directly:
 npm install @kupola/pivot-protocol @kupola/pivot-policy
 ```
 
+## Release
+
+Use `npm run release:check` to verify version consistency across the workspace and `npm run release:publish` to run the release pipeline.
+
 ## Quick Example
 
 ```js
