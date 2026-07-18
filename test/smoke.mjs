@@ -10,6 +10,7 @@ import {
   getExecutionOrder,
   parseStructuredCommandOutput,
   parseStructuredPlanOutput,
+  renderPlanPreviewToHTML,
   redactParams,
   renderResultToHTML,
   renderTimelineToHTML,
@@ -1290,9 +1291,14 @@ if (!failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.comp
 
 const timelineHTML = renderTimelineToHTML(result.explain.timeline);
 const resultHTML = renderResultToHTML(failingPlanResult);
+const planPreviewHTML = renderPlanPreviewToHTML(planPreview);
 
-if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed')) {
+if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview')) {
   throw new Error('Expected UI renderers to produce timeline and result markup.');
+}
+
+if (!planPreviewHTML.includes('pivot-plan-preview__node') || !planPreviewHTML.includes('validate-parent')) {
+  throw new Error('Expected plan preview renderer to include node summaries.');
 }
 
 const escapedHTML = renderTimelineToHTML([{ stage: '<script>', status: 'failed', message: '<img src=x onerror=alert(1)>' }]);

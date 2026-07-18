@@ -56,6 +56,48 @@ export function renderResultToHTML(result, options = {}) {
   ].join('');
 }
 
+export function renderPlanPreviewToHTML(preview, options = {}) {
+  const className = options.className ?? 'pivot-plan-preview';
+  const includeTimeline = options.includeTimeline ?? true;
+  const includeNodes = options.includeNodes ?? true;
+  const emptyText = options.emptyText ?? 'No plan preview available.';
+  const plan = preview?.data?.plan ?? null;
+  const nodes = Array.isArray(preview?.data?.nodes) ? preview.data.nodes : [];
+  const status = preview?.data?.status ?? (preview?.ok ? 'ready' : 'blocked');
+  const requiresConfirmation = Boolean(preview?.data?.requiresConfirmation);
+  const nodeCount = nodes.length;
+  const blockedCount = nodes.filter((item) => !item?.preview?.ok).length;
+  const confirmationCount = nodes.filter((item) => Boolean(item?.preview?.data?.requiresConfirmation)).length;
+  const timeline = preview?.explain?.timeline ?? [];
+
+  if (!preview || typeof preview !== 'object') {
+    return `<section class="${escapeAttr(className)} pivot-plan-preview--empty"><div class="pivot-plan-preview__empty">${escapeHTML(emptyText)}</div></section>`;
+  }
+
+  return [
+    `<section class="${escapeAttr(className)} pivot-plan-preview--${escapeAttr(status)}">`,
+    '<header class="pivot-plan-preview__header">',
+    `<span class="pivot-plan-preview__status">${escapeHTML(status)}</span>`,
+    `<strong class="pivot-plan-preview__message">${escapeHTML(preview?.message ?? '')}</strong>`,
+    '</header>',
+    '<div class="pivot-plan-preview__summary">',
+    `<div class="pivot-plan-preview__summary-item"><span class="pivot-plan-preview__label">Plan</span><span class="pivot-plan-preview__value">${escapeHTML(plan?.intent ?? plan?.id ?? '')}</span></div>`,
+    `<div class="pivot-plan-preview__summary-item"><span class="pivot-plan-preview__label">Nodes</span><span class="pivot-plan-preview__value">${escapeHTML(nodeCount)}</span></div>`,
+    `<div class="pivot-plan-preview__summary-item"><span class="pivot-plan-preview__label">Blocked</span><span class="pivot-plan-preview__value">${escapeHTML(blockedCount)}</span></div>`,
+    `<div class="pivot-plan-preview__summary-item"><span class="pivot-plan-preview__label">Confirmation</span><span class="pivot-plan-preview__value">${escapeHTML(requiresConfirmation ? 'required' : 'not required')} (${escapeHTML(confirmationCount)})</span></div>`,
+    '</div>',
+    plan ? [
+      '<div class="pivot-plan-preview__plan">',
+      `<div class="pivot-plan-preview__plan-title">${escapeHTML(plan.intent ?? plan.id ?? 'Plan')}</div>`,
+      `<div class="pivot-plan-preview__plan-id">${escapeHTML(plan.id ?? '')}</div>`,
+      '</div>'
+    ].join('') : '',
+    includeNodes ? renderPlanPreviewNodes(nodes) : '',
+    includeTimeline ? renderTimelineToHTML(timeline, { className: 'pivot-plan-preview__timeline' }) : '',
+    '</section>'
+  ].join('');
+}
+
 export function mountTimeline(target, timeline = [], options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderTimelineToHTML(timeline, options);
@@ -65,6 +107,12 @@ export function mountTimeline(target, timeline = [], options = {}) {
 export function mountResult(target, result, options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderResultToHTML(result, options);
+  return element;
+}
+
+export function mountPlanPreview(target, preview, options = {}) {
+  const element = resolveTarget(target);
+  element.innerHTML = renderPlanPreviewToHTML(preview, options);
   return element;
 }
 
@@ -97,4 +145,34 @@ function escapeHTML(value) {
 
 function escapeAttr(value) {
   return escapeHTML(value).replaceAll('`', '&#96;');
+}
+
+function renderPlanPreviewNodes(nodes) {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return '<ol class="pivot-plan-preview__nodes pivot-plan-preview__nodes--empty"><li>No plan nodes available.</li></ol>';
+  }
+
+  const items = nodes.map((item) => {
+    const node = item?.node ?? {};
+    const preview = item?.preview ?? {};
+    const command = item?.command ?? null;
+    const status = preview?.ok ? 'ready' : 'blocked';
+    const commandCapability = command?.capability ?? node?.capability ?? '';
+    const commandIntent = command?.intent ?? node?.intent ?? '';
+    const previewMessage = preview?.message ?? '';
+
+    return [
+      `<li class="pivot-plan-preview__node pivot-plan-preview__node--${escapeAttr(status)}">`,
+      '<div class="pivot-plan-preview__node-header">',
+      `<span class="pivot-plan-preview__node-id">${escapeHTML(node?.id ?? '')}</span>`,
+      `<span class="pivot-plan-preview__node-status">${escapeHTML(status)}</span>`,
+      '</div>',
+      `<div class="pivot-plan-preview__node-capability">${escapeHTML(commandCapability)}</div>`,
+      commandIntent ? `<div class="pivot-plan-preview__node-intent">${escapeHTML(commandIntent)}</div>` : '',
+      previewMessage ? `<div class="pivot-plan-preview__node-message">${escapeHTML(previewMessage)}</div>` : '',
+      '</li>'
+    ].join('');
+  }).join('');
+
+  return `<ol class="pivot-plan-preview__nodes">${items}</ol>`;
 }

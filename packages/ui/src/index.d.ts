@@ -34,6 +34,21 @@ export function renderResultToHTML(result: PivotResult, options?: {
   className?: string;
   includeTimeline?: boolean;
 }): string;
+export function renderPlanPreviewToHTML(preview: PivotResult<{
+  plan: PivotPlan;
+  nodes: Array<{
+    node: PivotPlanNode;
+    command: PivotCommand | null;
+    preview: PivotResult;
+  }>;
+  status: 'ready' | 'blocked';
+  requiresConfirmation: boolean;
+}>, options?: {
+  className?: string;
+  includeTimeline?: boolean;
+  includeNodes?: boolean;
+  emptyText?: string;
+}): string;
 export function mountTimeline<TElement extends Element>(target: string | TElement, timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
@@ -41,4 +56,19 @@ export function mountTimeline<TElement extends Element>(target: string | TElemen
 export function mountResult<TElement extends Element>(target: string | TElement, result: PivotResult, options?: {
   className?: string;
   includeTimeline?: boolean;
+}): TElement | Element;
+export function mountPlanPreview<TElement extends Element>(target: string | TElement, preview: PivotResult<{
+  plan: PivotPlan;
+  nodes: Array<{
+    node: PivotPlanNode;
+    command: PivotCommand | null;
+    preview: PivotResult;
+  }>;
+  status: 'ready' | 'blocked';
+  requiresConfirmation: boolean;
+}>, options?: {
+  className?: string;
+  includeTimeline?: boolean;
+  includeNodes?: boolean;
+  emptyText?: string;
 }): TElement | Element;

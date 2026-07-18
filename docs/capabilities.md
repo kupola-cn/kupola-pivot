@@ -136,6 +136,12 @@ if (preview.ok && preview.data.requiresConfirmation) {
 }
 ```
 
+Plan previews can be rendered with the UI package as plain HTML:
+
+```js
+const planPreviewHTML = renderPlanPreviewToHTML(previewPlanResult);
+```
+
 ## Why This Matters
 
 This mechanism gives PIVOT a hard boundary:
