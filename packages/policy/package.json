@@ -1,6 +1,6 @@
 {
   "name": "@kupola/pivot-policy",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Policy primitives for Kupola PIVOT frontend interaction checks and risk decisions.",
   "type": "module",
   "main": "src/index.js",

@@ -304,6 +304,18 @@ export function createPivotRuntime(options = {}) {
         capability: node.capability
       }));
 
+      if (isApprovalNode(node)) {
+        const preview = createApprovalPreview(plan, node);
+
+        nodePreviews.push({ node, command: null, preview });
+        timeline.push(createTimelineStep('plan.node.preview', 'ready', `Plan approval node preview ready: ${node.id}`, {
+          nodeId: node.id,
+          approval: true,
+          requiresApproval: true
+        }));
+        continue;
+      }
+
       const capability = registry.get(node.capability);
 
       if (!capability) {
@@ -422,6 +434,24 @@ export function createPivotRuntime(options = {}) {
         capability: node.capability
       }));
 
+      if (isApprovalNode(node)) {
+        const result = await executeApprovalNode({ plan, node, context, timeline, ui, emitAudit });
+
+        nodeResults.push({ node, command: null, result });
+        resultsByNodeId[node.id] = result;
+
+        if (!result.ok && stopOnError) {
+          const compensations = compensateOnError
+            ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
+            : [];
+
+          addCompensationTimeline(timeline, compensations);
+          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
+        }
+
+        continue;
+      }
+
       const capability = registry.get(node.capability);
 
       if (!capability) {
@@ -518,7 +548,7 @@ export function createPivotRuntime(options = {}) {
 
   const compensatePlan = async ({ plan, nodeResults, context, resultsByNodeId, failedNode }) => {
     const compensations = [];
-    const successfulNodes = nodeResults.filter((item) => item.result.ok && !item.result.data?.skipped).reverse();
+    const successfulNodes = nodeResults.filter((item) => item.result.ok && !item.result.data?.skipped && !isApprovalNode(item.node)).reverse();
 
     for (const item of successfulNodes) {
       const compensation = item.node.compensate;
@@ -637,6 +667,127 @@ function redactCommand(command, capability) {
     ...command,
     params: redactParams(command.params, capability.paramsSchema)
   };
+}
+
+function isApprovalNode(node) {
+  return node?.type === 'approval' || node?.type === 'human-approval';
+}
+
+function normalizeApproval(node) {
+  return {
+    title: node.approval?.title ?? node.intent ?? `Approve plan node ${node.id}`,
+    description: node.approval?.description ?? '',
+    requiredPermission: node.approval?.requiredPermission ?? '',
+    assignee: node.approval?.assignee ?? '',
+    metadata: node.approval?.metadata ?? {}
+  };
+}
+
+function createApprovalPreview(plan, node) {
+  const approval = normalizeApproval(node);
+
+  return createResult({
+    ok: true,
+    data: {
+      planId: plan.id,
+      nodeId: node.id,
+      approval,
+      requiresApproval: true,
+      requiresConfirmation: true
+    },
+    message: 'Plan approval is required.',
+    explain: {
+      nodeId: node.id,
+      approval: true,
+      requiresApproval: true
+    }
+  });
+}
+
+async function executeApprovalNode({ plan, node, context, timeline, ui, emitAudit }) {
+  const approval = normalizeApproval(node);
+
+  timeline.push(createTimelineStep('plan.approval', 'required', `Plan approval required: ${node.id}`, {
+    nodeId: node.id,
+    approval
+  }));
+
+  const approved = await ui.approve({
+    plan,
+    node,
+    context,
+    approval
+  });
+
+  if (!approved) {
+    timeline.push(createTimelineStep('plan.approval', 'rejected', `Plan approval rejected: ${node.id}`, {
+      nodeId: node.id
+    }));
+
+    const audit = emitAudit({
+      actor: context.actor,
+      intent: node.intent ?? plan.intent,
+      commandId: '',
+      capability: 'approval',
+      decision: PolicyDecision.DENY,
+      status: CommandStatus.REJECTED,
+      reason: 'Plan approval was rejected.',
+      metadata: {
+        planId: plan.id,
+        nodeId: node.id,
+        approval: true
+      }
+    });
+
+    return createResult({
+      ok: false,
+      data: {
+        approved: false,
+        approval
+      },
+      message: 'Plan approval was rejected.',
+      explain: {
+        nodeId: node.id,
+        approval: true,
+        approved: false
+      },
+      audit
+    });
+  }
+
+  timeline.push(createTimelineStep('plan.approval', 'approved', `Plan approval granted: ${node.id}`, {
+    nodeId: node.id
+  }));
+
+  const audit = emitAudit({
+    actor: context.actor,
+    intent: node.intent ?? plan.intent,
+    commandId: '',
+    capability: 'approval',
+    decision: PolicyDecision.CONFIRM,
+    status: CommandStatus.CONFIRMED,
+    reason: 'Plan approval was granted.',
+    metadata: {
+      planId: plan.id,
+      nodeId: node.id,
+      approval: true
+    }
+  });
+
+  return createResult({
+    ok: true,
+    data: {
+      approved: true,
+      approval
+    },
+    message: 'Plan approval was granted.',
+    explain: {
+      nodeId: node.id,
+      approval: true,
+      approved: true
+    },
+    audit
+  });
 }
 
 function groupIncomingEdges(plan) {

@@ -146,6 +146,8 @@ const planResult = await runtime.executePlan(plan, context);
 
 Plan nodes may define `compensate` so successful steps can be reversed when a later step fails.
 
+Plans can also include conditional branches and approval nodes when a workflow needs data-dependent routing or a human gate before execution continues.
+
 Every command and plan result can include `explain.timeline`, a UI-ready list of validation, policy, confirmation, execution, failure, and compensation steps.
 
 `@kupola/pivot-ui` also provides small rendering helpers:

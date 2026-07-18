@@ -321,6 +321,33 @@ Supported object condition fields:
 
 During `executePlan`, a node with conditional incoming edges runs only when at least one conditional incoming edge matches. Otherwise the node result is marked as skipped and its capability is not executed. `previewPlan` validates condition shape, but it does not evaluate result-dependent conditions because capability execution has not happened yet.
 
+## Human Approval Nodes
+
+Plans can also include approval gates without registering a capability:
+
+```js
+const plan = createPlan({
+  nodes: [
+    { id: 'prepare', capability: 'organization.query' },
+    {
+      id: 'human-approval',
+      type: 'approval',
+      approval: {
+        title: 'Approve branch creation',
+        description: 'A person must approve before the flow continues.'
+      }
+    },
+    { id: 'finalize', capability: 'organization.create' }
+  ],
+  edges: [
+    { from: 'prepare', to: 'human-approval' },
+    { from: 'human-approval', to: 'finalize' }
+  ]
+});
+```
+
+Approval nodes are handled by the trusted UI adapter through `approve(input)`. If the adapter rejects the approval, the plan fails at that node and execution stops under the normal plan rules. Approval nodes are not capability executions and do not call backend APIs.
+
 Nodes can also define compensation:
 
 ```js

@@ -93,6 +93,8 @@ The default behavior stops on the first failed node. Apps can pass `{ stopOnErro
 
 Plan edges may include declarative conditions. Conditional branches are evaluated from previous node results during execution, and non-matching branch nodes are marked as skipped instead of calling their capabilities. Conditions are data objects or known string aliases, not executable JavaScript.
 
+Plans may also include approval nodes. Approval nodes are explicit workflow gates handled by the trusted UI adapter, not registered capabilities. They are useful when a person must review the plan before the next step executes.
+
 ## Compensation
 
 Plan nodes can define a `compensate` capability. When a later node fails and `compensateOnError` is enabled, PIVOT runs compensation commands for previously successful nodes in reverse execution order.

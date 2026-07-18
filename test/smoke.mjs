@@ -29,6 +29,26 @@ const runtime = createPivotRuntime({
   }
 });
 
+const approvalCalls = [];
+const approvalRuntime = createPivotRuntime({
+  policies: [createPermissionPolicy()],
+  ui: {
+    confirm: async () => true,
+    approve: async (input) => {
+      approvalCalls.push(input);
+      return true;
+    }
+  }
+});
+
+const rejectionRuntime = createPivotRuntime({
+  policies: [createPermissionPolicy()],
+  ui: {
+    confirm: async () => true,
+    approve: async () => false
+  }
+});
+
 const isolatedRegistry = createCapabilityRegistry();
 const mutableCapabilityInput = {
   name: 'user.immutable.create',
@@ -242,6 +262,65 @@ runtime.registerCapability({
   permissions: ['organization:query'],
   paramsSchema: {},
   execute: async () => ({ kind: 'branch' })
+});
+
+runtime.registerCapability({
+  name: 'organization.finalize',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:create'],
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  execute: async ({ params }) => ({ id: 'finalized-1', ...params })
+});
+
+approvalRuntime.registerCapability({
+  name: 'organization.classify',
+  resource: 'organization',
+  action: ActionType.QUERY,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => ({ kind: 'branch' })
+});
+
+approvalRuntime.registerCapability({
+  name: 'organization.finalize',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:create'],
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  execute: async ({ params }) => ({ id: 'finalized-1', ...params })
+});
+
+rejectionRuntime.registerCapability({
+  name: 'organization.classify',
+  resource: 'organization',
+  action: ActionType.QUERY,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => ({ kind: 'branch' })
+});
+
+rejectionRuntime.registerCapability({
+  name: 'organization.finalize',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:create'],
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  execute: async ({ params }) => ({ id: 'finalized-1', ...params })
 });
 
 const command = createCommand({
@@ -533,6 +612,54 @@ const invalidConditionalPlan = createPlan({
   ]
 });
 
+const approvalPlan = createPlan({
+  intent: 'Classify, approve, and finalize an organization branch.',
+  nodes: [
+    { id: 'classify-approval', capability: 'organization.classify' },
+    {
+      id: 'human-approval',
+      type: 'approval',
+      intent: 'Approve final branch creation.',
+      approval: {
+        title: 'Approve branch creation',
+        description: 'Human approval is required before finalizing the branch.'
+      }
+    },
+    {
+      id: 'finalize-branch',
+      capability: 'organization.finalize',
+      params: { name: 'Branch J', parentId: 'group' }
+    }
+  ],
+  edges: [
+    { from: 'classify-approval', to: 'human-approval' },
+    { from: 'human-approval', to: 'finalize-branch' }
+  ]
+});
+
+const rejectedApprovalPlan = createPlan({
+  intent: 'Reject a human approval gate.',
+  nodes: [
+    { id: 'classify-rejected-approval', capability: 'organization.classify' },
+    {
+      id: 'human-approval-rejected',
+      type: 'approval',
+      approval: {
+        title: 'Reject branch creation'
+      }
+    },
+    {
+      id: 'finalize-rejected-branch',
+      capability: 'organization.finalize',
+      params: { name: 'Branch K', parentId: 'group' }
+    }
+  ],
+  edges: [
+    { from: 'classify-rejected-approval', to: 'human-approval-rejected' },
+    { from: 'human-approval-rejected', to: 'finalize-rejected-branch' }
+  ]
+});
+
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const invalidConditionalPlanValidation = validatePlan(invalidConditionalPlan);
@@ -571,6 +698,24 @@ const brokenReferenceResult = await runtime.executePlan(brokenReferencePlan, {
   actor: {
     id: 'user-1',
     permissions: ['organization:create']
+  }
+});
+const approvalPlanPreview = await approvalRuntime.previewPlan(approvalPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
+const approvalPlanResult = await approvalRuntime.executePlan(approvalPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
+const rejectedApprovalPlanResult = await rejectionRuntime.executePlan(rejectedApprovalPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
   }
 });
 const conditionalPlanResult = await runtime.executePlan(conditionalPlan, {
@@ -672,6 +817,26 @@ if (conditionalPlanResult.explain.skippedNodes !== 1 || conditionalPlanResult.ex
 
 if (!conditionalPlanResult.explain.timeline.some((step) => step.stage === 'plan.node' && step.status === 'skipped')) {
   throw new Error('Expected conditional plan timeline to include skipped node steps.');
+}
+
+if (!approvalPlanPreview.ok || !approvalPlanPreview.data.requiresConfirmation || !approvalPlanPreview.data.nodes.find((item) => item.node.id === 'human-approval')?.preview.data?.requiresApproval) {
+  throw new Error('Expected approval plan preview to require approval.');
+}
+
+if (!approvalPlanResult.ok || approvalPlanResult.data.nodes.find((item) => item.node.id === 'human-approval')?.result.audit?.status !== 'confirmed') {
+  throw new Error('Expected approval plan to confirm human approval and continue.');
+}
+
+if (rejectedApprovalPlanResult.ok || rejectedApprovalPlanResult.data.nodes.find((item) => item.node.id === 'human-approval-rejected')?.result.ok !== false) {
+  throw new Error('Expected rejected approval plan to fail at the approval node.');
+}
+
+if (rejectedApprovalPlanResult.data.nodes.find((item) => item.node.id === 'finalize-rejected-branch')?.result?.data?.skipped) {
+  throw new Error('Expected rejected approval plan to stop before the final node.');
+}
+
+if (!approvalCalls.length || approvalCalls[0].approval.title !== 'Approve branch creation') {
+  throw new Error('Expected approval adapter to receive approval context.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {

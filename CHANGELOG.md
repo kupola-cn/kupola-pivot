@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.10 - Human Approval Nodes
+
+### Added
+
+- Plan approval nodes with `type: 'approval'` or `type: 'human-approval'`.
+- Trusted UI adapter `approve()` hook with backward-compatible fallback to `confirm()`.
+- Approval timeline, audit, preview, and rejection handling in `executePlan()`.
+- Smoke coverage for approved and rejected plan gates.
+
 ## 0.2.9 - Conditional Plan Edges
 
 ### Added

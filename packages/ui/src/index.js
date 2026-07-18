@@ -1,8 +1,11 @@
 export function createTrustedUIAdapter(adapter = {}) {
+  const confirm = adapter.confirm ?? (async () => false);
+
   return {
     showMessage: adapter.showMessage ?? (() => {}),
     showResult: adapter.showResult ?? (() => {}),
-    confirm: adapter.confirm ?? (async () => false),
+    confirm,
+    approve: adapter.approve ?? ((input) => confirm(input)),
     openAssistant: adapter.openAssistant ?? (() => {}),
     closeAssistant: adapter.closeAssistant ?? (() => {})
   };

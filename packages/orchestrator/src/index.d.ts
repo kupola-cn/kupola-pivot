@@ -6,6 +6,13 @@ export interface PivotPlanNode {
   params?: Record<string, unknown>;
   risk?: string;
   intent?: string;
+  approval?: {
+    title?: string;
+    description?: string;
+    requiredPermission?: string;
+    assignee?: string;
+    metadata?: Record<string, unknown>;
+  };
   compensate?: {
     capability?: string;
     command?: unknown;

@@ -1,5 +1,6 @@
 import type { PivotCapability, PivotCommand, PivotExecutionContext, PivotResult } from '@kupola/pivot-protocol';
 import type { PolicyResult } from '@kupola/pivot-policy';
+import type { PivotPlan, PivotPlanNode } from '@kupola/pivot-orchestrator';
 
 export interface TrustedUIConfirmInput {
   command: PivotCommand;
@@ -8,10 +9,18 @@ export interface TrustedUIConfirmInput {
   context: PivotExecutionContext;
 }
 
+export interface TrustedUIApproveInput {
+  plan: PivotPlan;
+  node: PivotPlanNode;
+  context: PivotExecutionContext;
+  approval: Record<string, unknown>;
+}
+
 export interface TrustedUIAdapter {
   showMessage(message: string, options?: Record<string, unknown>): void;
   showResult(result: PivotResult): void;
   confirm(input: TrustedUIConfirmInput): boolean | Promise<boolean>;
+  approve(input: TrustedUIApproveInput): boolean | Promise<boolean>;
   openAssistant(options?: Record<string, unknown>): void;
   closeAssistant(): void;
 }
