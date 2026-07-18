@@ -148,6 +148,12 @@ Execution timelines can be rendered as a detail view:
 const timelineDetailHTML = renderTimelineDetailToHTML(commandResult);
 ```
 
+Audit events can be rendered for trusted review:
+
+```js
+const auditViewerHTML = renderAuditViewerToHTML(runtime.getAuditEvents());
+```
+
 ## Why This Matters
 
 This mechanism gives PIVOT a hard boundary:

@@ -91,6 +91,42 @@ export function renderTimelineDetailToHTML(result, options = {}) {
   ].join('');
 }
 
+export function renderAuditViewerToHTML(audits = [], options = {}) {
+  const className = options.className ?? 'pivot-audit-viewer';
+  const emptyText = options.emptyText ?? 'No audit events available.';
+  const title = options.title ?? 'Audit viewer';
+  const entries = Array.isArray(audits) ? audits : [];
+
+  if (entries.length === 0) {
+    return `<section class="${escapeAttr(className)} pivot-audit-viewer--empty"><div class="pivot-audit-viewer__empty">${escapeHTML(emptyText)}</div></section>`;
+  }
+
+  const statusCounts = countAuditStatuses(entries);
+  const decisionCounts = countAuditDecisions(entries);
+
+  return [
+    `<section class="${escapeAttr(className)}">`,
+    '<header class="pivot-audit-viewer__header">',
+    `<strong class="pivot-audit-viewer__title">${escapeHTML(title)}</strong>`,
+    `<div class="pivot-audit-viewer__message">${escapeHTML(options.message ?? `Showing ${entries.length} audit events.`)}</div>`,
+    '</header>',
+    '<div class="pivot-audit-viewer__summary">',
+    renderAuditSummaryItem('Total', entries.length),
+    renderAuditSummaryItem('Executed', statusCounts.executed),
+    renderAuditSummaryItem('Blocked', statusCounts.blocked),
+    renderAuditSummaryItem('Rejected', statusCounts.rejected),
+    renderAuditSummaryItem('Failed', statusCounts.failed),
+    renderAuditSummaryItem('Allowed', decisionCounts.allow),
+    renderAuditSummaryItem('Denied', decisionCounts.deny),
+    renderAuditSummaryItem('Confirmed', decisionCounts.confirm),
+    '</div>',
+    '<ol class="pivot-audit-viewer__list">',
+    ...entries.map((audit, index) => renderAuditEntry(audit, index)),
+    '</ol>',
+    '</section>'
+  ].join('');
+}
+
 export function renderPlanPreviewToHTML(preview, options = {}) {
   const className = options.className ?? 'pivot-plan-preview';
   const includeTimeline = options.includeTimeline ?? true;
@@ -154,6 +190,12 @@ export function mountPlanPreview(target, preview, options = {}) {
 export function mountTimelineDetail(target, result, options = {}) {
   const element = resolveTarget(target);
   element.innerHTML = renderTimelineDetailToHTML(result, options);
+  return element;
+}
+
+export function mountAuditViewer(target, audits = [], options = {}) {
+  const element = resolveTarget(target);
+  element.innerHTML = renderAuditViewerToHTML(audits, options);
   return element;
 }
 
@@ -258,4 +300,101 @@ function renderTimelineDetailAuditItem(label, value) {
     `<span class="pivot-timeline-detail__audit-value">${escapeHTML(value)}</span>`,
     '</div>'
   ].join('');
+}
+
+function renderAuditSummaryItem(label, value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-audit-viewer__summary-item">',
+    `<span class="pivot-audit-viewer__summary-label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-audit-viewer__summary-value">${escapeHTML(value)}</span>`,
+    '</div>'
+  ].join('');
+}
+
+function renderAuditEntry(audit, index) {
+  const status = String(audit?.status ?? 'unknown').toLowerCase();
+  const decision = String(audit?.decision ?? 'unknown').toLowerCase();
+  const metadata = audit?.metadata ?? {};
+
+  return [
+    `<li class="pivot-audit-viewer__item pivot-audit-viewer__item--${escapeAttr(status)} pivot-audit-viewer__item--${escapeAttr(decision)}">`,
+    '<article class="pivot-audit-viewer__card">',
+    '<div class="pivot-audit-viewer__card-header">',
+    `<span class="pivot-audit-viewer__index">#${escapeHTML(index + 1)}</span>`,
+    `<span class="pivot-audit-viewer__status">${escapeHTML(status)}</span>`,
+    `<span class="pivot-audit-viewer__decision">${escapeHTML(decision)}</span>`,
+    '</div>',
+    '<div class="pivot-audit-viewer__grid">',
+    renderAuditField('Timestamp', audit?.timestamp),
+    renderAuditField('Intent', audit?.intent),
+    renderAuditField('Capability', audit?.capability),
+    renderAuditField('Command', audit?.commandId),
+    renderAuditField('Reason', audit?.reason),
+    renderAuditField('Actor', formatAuditValue(audit?.actor)),
+    renderAuditField('Metadata', formatAuditValue(metadata)),
+    '</div>',
+    '</article>',
+    '</li>'
+  ].join('');
+}
+
+function renderAuditField(label, value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+
+  return [
+    '<div class="pivot-audit-viewer__field">',
+    `<span class="pivot-audit-viewer__field-label">${escapeHTML(label)}</span>`,
+    `<span class="pivot-audit-viewer__field-value">${escapeHTML(value)}</span>`,
+    '</div>'
+  ].join('');
+}
+
+function formatAuditValue(value) {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value, createJsonReplacer(), 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function createJsonReplacer() {
+  const seen = new WeakSet();
+
+  return (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular]';
+      }
+
+      seen.add(value);
+    }
+
+    return value;
+  };
+}
+
+function countAuditStatuses(entries) {
+  return entries.reduce((accumulator, audit) => {
+    const status = String(audit?.status ?? 'unknown').toLowerCase();
+    accumulator[status] = (accumulator[status] ?? 0) + 1;
+    return accumulator;
+  }, {});
+}
+
+function countAuditDecisions(entries) {
+  return entries.reduce((accumulator, audit) => {
+    const decision = String(audit?.decision ?? 'unknown').toLowerCase();
+    accumulator[decision] = (accumulator[decision] ?? 0) + 1;
+    return accumulator;
+  }, {});
 }

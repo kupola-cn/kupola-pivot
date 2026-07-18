@@ -1,4 +1,4 @@
-import type { PivotCapability, PivotCommand, PivotExecutionContext, PivotResult } from '@kupola/pivot-protocol';
+import type { PivotAuditEvent, PivotCapability, PivotCommand, PivotExecutionContext, PivotResult } from '@kupola/pivot-protocol';
 import type { PolicyResult } from '@kupola/pivot-policy';
 import type { PivotPlan, PivotPlanNode } from '@kupola/pivot-orchestrator';
 
@@ -41,6 +41,12 @@ export function renderTimelineDetailToHTML(result: PivotResult, options?: {
   emptyText?: string;
   title?: string;
 }): string;
+export function renderAuditViewerToHTML(audits?: PivotAuditEvent[], options?: {
+  className?: string;
+  emptyText?: string;
+  title?: string;
+  message?: string;
+}): string;
 export function renderPlanPreviewToHTML(preview: PivotResult<{
   plan: PivotPlan;
   nodes: Array<{
@@ -70,6 +76,12 @@ export function mountTimelineDetail<TElement extends Element>(target: string | T
   includeAudit?: boolean;
   emptyText?: string;
   title?: string;
+}): TElement | Element;
+export function mountAuditViewer<TElement extends Element>(target: string | TElement, audits?: PivotAuditEvent[], options?: {
+  className?: string;
+  emptyText?: string;
+  title?: string;
+  message?: string;
 }): TElement | Element;
 export function mountPlanPreview<TElement extends Element>(target: string | TElement, preview: PivotResult<{
   plan: PivotPlan;

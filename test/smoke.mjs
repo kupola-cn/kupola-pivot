@@ -10,6 +10,7 @@ import {
   getExecutionOrder,
   parseStructuredCommandOutput,
   parseStructuredPlanOutput,
+  renderAuditViewerToHTML,
   renderPlanPreviewToHTML,
   renderTimelineDetailToHTML,
   redactParams,
@@ -1322,8 +1323,9 @@ const timelineHTML = renderTimelineToHTML(result.explain.timeline);
 const resultHTML = renderResultToHTML(failingPlanResult);
 const planPreviewHTML = renderPlanPreviewToHTML(planPreview);
 const timelineDetailHTML = renderTimelineDetailToHTML(result);
+const auditViewerHTML = renderAuditViewerToHTML(auditRuntime.getAuditEvents());
 
-if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail')) {
+if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-result--failed') || !planPreviewHTML.includes('pivot-plan-preview') || !timelineDetailHTML.includes('pivot-timeline-detail') || !auditViewerHTML.includes('pivot-audit-viewer')) {
   throw new Error('Expected UI renderers to produce timeline and result markup.');
 }
 
@@ -1333,6 +1335,10 @@ if (!planPreviewHTML.includes('pivot-plan-preview__node') || !planPreviewHTML.in
 
 if (!timelineDetailHTML.includes('pivot-timeline-detail__audit') || !timelineDetailHTML.includes('pivot-timeline-detail__timeline')) {
   throw new Error('Expected timeline detail renderer to include audit and timeline sections.');
+}
+
+if (!auditViewerHTML.includes('organization.audit.create') || !auditViewerHTML.includes('audit-user')) {
+  throw new Error('Expected audit viewer renderer to include audit entries.');
 }
 
 const escapedHTML = renderTimelineToHTML([{ stage: '<script>', status: 'failed', message: '<img src=x onerror=alert(1)>' }]);
