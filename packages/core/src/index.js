@@ -33,9 +33,9 @@ export { addEdge, addNode, createPlan, evaluatePlanEdgeCondition, getExecutionLa
 export { createTrustedUIAdapter, mountResult, mountTimeline, renderResultToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
-import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, createValidationResult, redactParams, validateParams } from '@kupola/pivot-protocol';
+import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, createValidationResult, redactParams, validateCommand, validateParams } from '@kupola/pivot-protocol';
 import { PolicyDecision, confirm, createPolicyPipeline } from '@kupola/pivot-policy';
-import { evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
+import { createPlan, evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 import { createCapabilityRegistry } from './capability-registry.js';
 import { createTrustedUIAdapter } from '@kupola/pivot-ui';
 
@@ -656,6 +656,100 @@ export function createPivotRuntime(options = {}) {
   };
 }
 
+export function parseStructuredCommandOutput(output) {
+  const extraction = extractStructuredOutputPayload(output, 'command');
+
+  if (!extraction.valid) {
+    return createResult({
+      ok: false,
+      message: 'Structured command output is invalid.',
+      data: null,
+      explain: {
+        errors: extraction.errors,
+        warnings: extraction.warnings,
+        expectedType: 'command'
+      }
+    });
+  }
+
+  const command = createCommand(pickStructuredFields(extraction.payload, STRUCTURED_COMMAND_FIELDS));
+  const validation = validateCommand(command);
+
+  if (!validation.valid) {
+    return createResult({
+      ok: false,
+      message: 'Structured command output is invalid.',
+      data: null,
+      explain: {
+        errors: validation.errors,
+        warnings: validation.warnings,
+        expectedType: 'command'
+      }
+    });
+  }
+
+  return createResult({
+    ok: true,
+    message: 'Structured command output parsed.',
+    data: {
+      command,
+      source: extraction.payload
+    },
+    explain: {
+      errors: validation.errors,
+      warnings: validation.warnings,
+      expectedType: 'command'
+    }
+  });
+}
+
+export function parseStructuredPlanOutput(output) {
+  const extraction = extractStructuredOutputPayload(output, 'plan');
+
+  if (!extraction.valid) {
+    return createResult({
+      ok: false,
+      message: 'Structured plan output is invalid.',
+      data: null,
+      explain: {
+        errors: extraction.errors,
+        warnings: extraction.warnings,
+        expectedType: 'plan'
+      }
+    });
+  }
+
+  const plan = createPlan(pickStructuredFields(extraction.payload, STRUCTURED_PLAN_FIELDS));
+  const validation = validatePlan(plan);
+
+  if (!validation.valid) {
+    return createResult({
+      ok: false,
+      message: 'Structured plan output is invalid.',
+      data: null,
+      explain: {
+        errors: validation.errors,
+        warnings: validation.warnings,
+        expectedType: 'plan'
+      }
+    });
+  }
+
+  return createResult({
+    ok: true,
+    message: 'Structured plan output parsed.',
+    data: {
+      plan,
+      source: extraction.payload
+    },
+    explain: {
+      errors: validation.errors,
+      warnings: validation.warnings,
+      expectedType: 'plan'
+    }
+  });
+}
+
 function needsConfirmation(command, capability, policyDecision) {
   if (policyDecision.decision === PolicyDecision.CONFIRM) {
     return true;
@@ -679,6 +773,64 @@ function redactCommand(command, capability) {
     params: redactParams(command.params, capability.paramsSchema)
   };
 }
+
+function extractStructuredOutputPayload(output, expectedType) {
+  const errors = [];
+  const warnings = [];
+
+  if (!isPlainObject(output)) {
+    return {
+      valid: false,
+      errors: ['Structured output must be a plain object.'],
+      warnings,
+      payload: null
+    };
+  }
+
+  const declaredType = output.type ?? output.kind;
+
+  if (declaredType !== undefined && declaredType !== expectedType) {
+    errors.push(`Structured output type must be ${expectedType}.`);
+  }
+
+  const envelopeField = expectedType === 'command' ? 'command' : 'plan';
+  const envelopePayload = output[envelopeField];
+
+  if (envelopePayload !== undefined) {
+    if (!isPlainObject(envelopePayload)) {
+      errors.push(`Structured output ${envelopeField} must be a plain object.`);
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+      payload: envelopePayload
+    };
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    payload: output
+  };
+}
+
+function pickStructuredFields(value, allowedFields) {
+  if (!isPlainObject(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    allowedFields
+      .filter((field) => Object.hasOwn(value, field))
+      .map((field) => [field, value[field]])
+  );
+}
+
+const STRUCTURED_COMMAND_FIELDS = ['id', 'intent', 'resource', 'action', 'capability', 'risk', 'params', 'metadata'];
+const STRUCTURED_PLAN_FIELDS = ['id', 'intent', 'nodes', 'edges', 'metadata'];
 
 function isApprovalNode(node) {
   return node?.type === 'approval' || node?.type === 'human-approval';

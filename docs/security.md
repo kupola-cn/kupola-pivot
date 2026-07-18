@@ -32,6 +32,36 @@ PIVOT should:
 - require confirmation for destructive, sensitive, or cross-scope operations
 - avoid putting sensitive fields into prompts, logs, or UI previews by default
 
+Prompt injection is a content problem, not an execution permission.
+Treat user messages, attached documents, imported HTML, and model output as hostile until they are parsed into a known schema.
+Do not let any of that content override:
+
+- system instructions
+- capability selection
+- command or plan shape
+- policy decisions
+- backend authorization
+
+Recommended flow:
+
+1. Ask the model for a bounded structured output.
+2. Parse it into a plain object.
+3. Validate it with `validateCommand()`, `validatePlan()`, or the runtime parser helpers.
+4. Preview before execution.
+5. Reject anything that does not match the schema exactly.
+
+Example:
+
+```js
+const parsedCommand = parseStructuredCommandOutput(modelOutput);
+
+if (!parsedCommand.ok) {
+  return showValidationErrors(parsedCommand.explain.errors);
+}
+
+const preview = await runtime.previewCommand(parsedCommand.data.command, context);
+```
+
 ## Permission Feedback
 
 When a user lacks permission, PIVOT should explain the blocked operation clearly:

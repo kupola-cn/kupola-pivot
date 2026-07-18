@@ -42,6 +42,10 @@ export function validatePlan(plan, options = {}) {
     errors.push('Plan edges must be an array.');
   }
 
+  if (!isPlainObject(plan.metadata)) {
+    errors.push('Plan metadata must be a plain object.');
+  }
+
   if (errors.length > 0) {
     return { valid: false, errors, warnings };
   }
@@ -60,6 +64,11 @@ export function validatePlan(plan, options = {}) {
   const nodeIds = new Set();
 
   for (const node of plan.nodes) {
+    if (!isPlainObject(node)) {
+      errors.push('Plan node must be a plain object.');
+      continue;
+    }
+
     if (!node?.id) {
       errors.push('Plan node id is required.');
       continue;
@@ -75,6 +84,11 @@ export function validatePlan(plan, options = {}) {
   }
 
   for (const edge of plan.edges) {
+    if (!isPlainObject(edge)) {
+      errors.push('Plan edge must be a plain object.');
+      continue;
+    }
+
     if (!nodeIds.has(edge.from)) {
       errors.push(`Plan edge references unknown from node: ${edge.from}`);
     }

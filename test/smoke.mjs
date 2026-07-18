@@ -8,6 +8,8 @@ import {
   createPermissionPolicy,
   createPivotRuntime,
   getExecutionOrder,
+  parseStructuredCommandOutput,
+  parseStructuredPlanOutput,
   redactParams,
   renderResultToHTML,
   renderTimelineToHTML,
@@ -455,8 +457,51 @@ const secondCommand = createCommand({
   params: { name: 'Branch D', parentId: 'group' }
 });
 
+const structuredCommandOutput = {
+  type: 'command',
+  command: {
+    intent: 'Create Branch H from structured output.',
+    resource: 'organization',
+    action: ActionType.CREATE,
+    capability: 'organization.create',
+    risk: RiskLevel.MEDIUM,
+    params: { name: 'Branch H', parentId: 'group' }
+  }
+};
+
+const topLevelStructuredCommandOutput = {
+  intent: 'Create Branch H from top-level structured output.',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  capability: 'organization.create',
+  risk: RiskLevel.MEDIUM,
+  params: { name: 'Branch H', parentId: 'group' }
+};
+
+const invalidStructuredCommandOutput = parseStructuredCommandOutput({
+  type: 'command',
+  command: {
+    intent: 'Broken command output.'
+  }
+});
+
+const parsedStructuredCommand = parseStructuredCommandOutput(structuredCommandOutput);
+const parsedTopLevelStructuredCommand = parseStructuredCommandOutput(topLevelStructuredCommandOutput);
+
 if (command.id === secondCommand.id) {
   throw new Error('Expected command IDs to be unique.');
+}
+
+if (invalidStructuredCommandOutput.ok || !invalidStructuredCommandOutput.explain.errors.some((error) => error.includes('Command field is required'))) {
+  throw new Error('Expected invalid structured command output to fail validation.');
+}
+
+if (!parsedStructuredCommand.ok || parsedStructuredCommand.data.command.capability !== 'organization.create') {
+  throw new Error('Expected structured command output to parse into a command.');
+}
+
+if (!parsedTopLevelStructuredCommand.ok || parsedTopLevelStructuredCommand.data.command.intent !== topLevelStructuredCommandOutput.intent) {
+  throw new Error('Expected top-level structured command output to parse into a command.');
 }
 
 const unknownParamValidation = validateParams(
@@ -705,6 +750,25 @@ const referencedPlan = createPlan({
   edges: [{ from: 'lookup-parent', to: 'create-referenced-branch' }]
 });
 
+const structuredPlanOutput = {
+  kind: 'plan',
+  plan: referencedPlan
+};
+
+const topLevelStructuredPlanOutput = referencedPlan;
+
+const invalidStructuredPlanOutput = parseStructuredPlanOutput({
+  type: 'plan',
+  plan: {
+    id: 'broken-plan-output',
+    intent: 'Broken plan output.',
+    nodes: 'not-an-array',
+    edges: []
+  }
+});
+
+const parsedTopLevelStructuredPlan = parseStructuredPlanOutput(topLevelStructuredPlanOutput);
+
 const contractPlan = createPlan({
   intent: 'Create a HIS organization branch with explicit input mapping and output contract.',
   nodes: [
@@ -948,6 +1012,19 @@ const referencedPlanResult = await runtime.executePlan(referencedPlan, {
     permissions: ['organization:query', 'organization:create']
   }
 });
+const parsedStructuredPlan = parseStructuredPlanOutput(structuredPlanOutput);
+const parsedStructuredCommandPreview = await runtime.previewCommand(parsedStructuredCommand.data.command, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:create']
+  }
+});
+const parsedStructuredPlanResult = await runtime.executePlan(parsedStructuredPlan.data.plan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
 const contractPlanResult = await runtime.executePlan(contractPlan, {
   actor: {
     id: 'user-1',
@@ -1053,6 +1130,30 @@ if (invalidConditionalPlanValidation.valid || !invalidConditionalPlanValidation.
 
 if (invalidContractPlanValidation.valid || !invalidContractPlanValidation.errors.some((error) => error.includes('Plan node input must be a plain object'))) {
   throw new Error('Expected plan validation to reject invalid node contract shapes.');
+}
+
+if (!parsedStructuredCommandPreview.ok || !parsedStructuredCommandPreview.data.requiresConfirmation) {
+  throw new Error('Expected parsed structured command output to preview successfully.');
+}
+
+if (parsedStructuredCommandPreview.data.command.params.parentId !== 'group') {
+  throw new Error('Expected parsed structured command preview to preserve command params.');
+}
+
+if (!parsedStructuredPlan.ok || parsedStructuredPlan.data.plan.id !== referencedPlan.id) {
+  throw new Error('Expected structured plan output to parse into a plan.');
+}
+
+if (parsedStructuredPlanResult.ok !== true || parsedStructuredPlanResult.data.nodes.length !== 2) {
+  throw new Error('Expected parsed structured plan output to execute successfully.');
+}
+
+if (!parsedTopLevelStructuredPlan.ok || parsedTopLevelStructuredPlan.data.plan.id !== referencedPlan.id) {
+  throw new Error('Expected top-level structured plan output to parse into a plan.');
+}
+
+if (invalidStructuredPlanOutput.ok || !invalidStructuredPlanOutput.explain.errors.some((error) => error.includes('Plan nodes must be an array.'))) {
+  throw new Error('Expected invalid structured plan output to fail validation.');
 }
 
 if (!planPreview.ok || !planPreview.data.requiresConfirmation || planPreview.data.status !== 'ready') {

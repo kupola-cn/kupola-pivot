@@ -98,6 +98,18 @@ if (!validation.valid) {
 }
 ```
 
+When AI returns structured output, parse it first and only then preview or execute:
+
+```js
+const parsedCommand = parseStructuredCommandOutput(modelOutput);
+
+if (!parsedCommand.ok) {
+  return showErrors(parsedCommand.explain.errors);
+}
+
+const preview = await runtime.previewCommand(parsedCommand.data.command, context);
+```
+
 For UI preview before execution:
 
 ```js
@@ -267,6 +279,18 @@ const result = await runtime.executePlan(plan, context);
 ```
 
 Each node is converted into a command and executed through the same validation, policy, confirmation, execution, and audit path as `executeCommand`.
+
+Structured plan output follows the same rule:
+
+```js
+const parsedPlan = parseStructuredPlanOutput(modelOutput);
+
+if (!parsedPlan.ok) {
+  return showErrors(parsedPlan.explain.errors);
+}
+
+const preview = await runtime.previewPlan(parsedPlan.data.plan, context);
+```
 
 Independent nodes in the same dependency layer may run in parallel. `getExecutionLayers()` returns the layer structure if a host app wants to inspect or visualize it.
 

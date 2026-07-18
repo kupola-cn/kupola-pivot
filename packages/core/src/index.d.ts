@@ -52,6 +52,14 @@ export function createCapabilityRegistry(options?: {
 }): CapabilityRegistry;
 
 export type PivotAuditSink = (event: PivotAuditEvent) => void | Promise<void>;
+export function parseStructuredCommandOutput(output: unknown): PivotResult<{
+  command: PivotCommand;
+  source: unknown;
+}>;
+export function parseStructuredPlanOutput(output: unknown): PivotResult<{
+  plan: PivotPlan;
+  source: unknown;
+}>;
 
 export interface PivotRuntime {
   registry: CapabilityRegistry;
