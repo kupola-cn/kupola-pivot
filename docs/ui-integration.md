@@ -103,3 +103,9 @@ Use Kupola components for the shell:
 - `Message` for status feedback after execution
 
 The bridge keeps PIVOT responsible for validation, preview, orchestration, and audit data, while Kupola owns the surface and interaction chrome.
+
+## Browser Mount Helpers
+
+The framework-neutral mount helpers such as `mountResult()`, `mountTimeline()`, `mountPlanPreview()`, `mountTimelineDetail()`, `mountAuditViewer()`, `mountCapabilityBrowser()`, and `mountPlanGraph()` write the rendered HTML into an existing DOM element and mark the target with `data-pivot-mounted`.
+
+They also set `aria-live="polite"` by default on the host element and let callers provide an `ariaLabel` for the mounted region. Empty states are rendered as status content so host apps can surface loading or empty-content feedback without adding their own wrapper logic.

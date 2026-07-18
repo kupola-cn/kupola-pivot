@@ -49,6 +49,8 @@ export interface PivotCapabilityBrowserOptions {
   message?: string;
   query?: string;
   filter?: PivotCapabilityFilter;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }
 
 export interface PivotPlanPreviewNode {
@@ -86,6 +88,8 @@ export interface PivotPlanGraphOptions {
   message?: string;
   showEdges?: boolean;
   includeEdgeList?: boolean;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }
 
 export interface PivotPlanPreviewOptions {
@@ -93,16 +97,20 @@ export interface PivotPlanPreviewOptions {
   includeTimeline?: boolean;
   includeNodes?: boolean;
   emptyText?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }
 
 export function createTrustedUIAdapter(adapter?: Partial<TrustedUIAdapter>): TrustedUIAdapter;
 export function renderTimelineToHTML(timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
+  ariaLabel?: string;
 }): string;
 export function renderResultToHTML(result: PivotResult, options?: {
   className?: string;
   includeTimeline?: boolean;
+  ariaLabel?: string;
 }): string;
 export function renderTimelineDetailToHTML(result: PivotResult, options?: {
   className?: string;
@@ -110,6 +118,7 @@ export function renderTimelineDetailToHTML(result: PivotResult, options?: {
   includeAudit?: boolean;
   emptyText?: string;
   title?: string;
+  ariaLabel?: string;
 }): string;
 export function renderAuditViewerToHTML(audits?: PivotAuditEvent[], options?: {
   className?: string;
@@ -123,10 +132,14 @@ export function renderPlanGraphToHTML(plan: PivotPlanGraphInput, options?: Pivot
 export function mountTimeline<TElement extends Element>(target: string | TElement, timeline?: unknown[], options?: {
   className?: string;
   emptyText?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 export function mountResult<TElement extends Element>(target: string | TElement, result: PivotResult, options?: {
   className?: string;
   includeTimeline?: boolean;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 export function mountTimelineDetail<TElement extends Element>(target: string | TElement, result: PivotResult, options?: {
   className?: string;
@@ -134,12 +147,16 @@ export function mountTimelineDetail<TElement extends Element>(target: string | T
   includeAudit?: boolean;
   emptyText?: string;
   title?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 export function mountAuditViewer<TElement extends Element>(target: string | TElement, audits?: PivotAuditEvent[], options?: {
   className?: string;
   emptyText?: string;
   title?: string;
   message?: string;
+  ariaLabel?: string;
+  liveRegion?: boolean;
 }): TElement | Element;
 export function mountCapabilityBrowser<TElement extends Element>(target: string | TElement, capabilities?: PivotCapability[], options?: PivotCapabilityBrowserOptions): TElement | Element;
 export function mountPlanGraph<TElement extends Element>(target: string | TElement, plan: PivotPlanGraphInput, options?: PivotPlanGraphOptions): TElement | Element;

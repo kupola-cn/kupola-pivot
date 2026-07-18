@@ -99,3 +99,13 @@ When a request comes from AI-generated structured output, the backend should sti
 
 The backend must never assume that AI validation implies user authorization.
 
+## Recommended Server Handoff
+
+Keep the browser-side runtime thin and move service-facing concerns into the backend:
+
+- capability metadata endpoint: returns the capabilities a user can see, plus the permission hints and policy context the frontend can display
+- preview endpoint: accepts structured commands or plans, revalidates them on the server, and persists a server-side preview or draft record when needed
+- execution endpoint: validates auth, scope, and rate limits again before calling host APIs
+- audit endpoint or sink: stores request IDs, trace IDs, capability names, decisions, and status summaries
+
+The frontend should never be the only place where capability lists, policy context, audit storage, or throttling are enforced. Those controls belong to the service boundary and its API gateway or application server.

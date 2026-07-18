@@ -14,9 +14,10 @@ export function createTrustedUIAdapter(adapter = {}) {
 export function renderTimelineToHTML(timeline = [], options = {}) {
   const className = options.className ?? 'pivot-timeline';
   const emptyText = options.emptyText ?? 'No timeline available.';
+  const ariaLabel = options.ariaLabel ?? 'Timeline';
 
   if (!Array.isArray(timeline) || timeline.length === 0) {
-    return `<ol class="${escapeAttr(className)} pivot-timeline--empty"><li>${escapeHTML(emptyText)}</li></ol>`;
+    return `<ol class="${escapeAttr(className)} pivot-timeline--empty" aria-label="${escapeAttr(ariaLabel)}"><li role="status">${escapeHTML(emptyText)}</li></ol>`;
   }
 
   const items = timeline.map((step) => {
@@ -37,7 +38,7 @@ export function renderTimelineToHTML(timeline = [], options = {}) {
     ].join('');
   }).join('');
 
-  return `<ol class="${escapeAttr(className)}">${items}</ol>`;
+  return `<ol class="${escapeAttr(className)}" aria-label="${escapeAttr(ariaLabel)}">${items}</ol>`;
 }
 
 export function renderResultToHTML(result, options = {}) {
@@ -47,9 +48,10 @@ export function renderResultToHTML(result, options = {}) {
   const message = result?.message ?? '';
   const timeline = result?.explain?.timeline ?? [];
   const includeTimeline = options.includeTimeline ?? true;
+  const ariaLabel = options.ariaLabel ?? 'Result';
 
   return [
-    `<section class="${escapeAttr(className)} pivot-result--${status}">`,
+    `<section class="${escapeAttr(className)} pivot-result--${status}" role="region" aria-label="${escapeAttr(ariaLabel)}">`,
     `<header class="pivot-result__header"><span class="pivot-result__status">${escapeHTML(status)}</span><strong class="pivot-result__message">${escapeHTML(message)}</strong></header>`,
     includeTimeline ? renderTimelineToHTML(timeline, { className: 'pivot-result__timeline' }) : '',
     '</section>'
@@ -65,13 +67,14 @@ export function renderTimelineDetailToHTML(result, options = {}) {
   const ok = Boolean(result?.ok);
   const status = ok ? 'success' : 'failed';
   const timeline = result?.explain?.timeline ?? [];
+  const ariaLabel = options.ariaLabel ?? title;
 
   if (!result || typeof result !== 'object') {
-    return `<section class="${escapeAttr(className)} pivot-timeline-detail--empty"><div class="pivot-timeline-detail__empty">${escapeHTML(emptyText)}</div></section>`;
+    return `<section class="${escapeAttr(className)} pivot-timeline-detail--empty" role="region" aria-label="${escapeAttr(ariaLabel)}"><div class="pivot-timeline-detail__empty" role="status">${escapeHTML(emptyText)}</div></section>`;
   }
 
   return [
-    `<section class="${escapeAttr(className)} pivot-timeline-detail--${escapeAttr(status)}">`,
+    `<section class="${escapeAttr(className)} pivot-timeline-detail--${escapeAttr(status)}" role="region" aria-label="${escapeAttr(ariaLabel)}">`,
     '<header class="pivot-timeline-detail__header">',
     `<span class="pivot-timeline-detail__status">${escapeHTML(status)}</span>`,
     `<strong class="pivot-timeline-detail__title">${escapeHTML(title)}</strong>`,
@@ -98,14 +101,14 @@ export function renderAuditViewerToHTML(audits = [], options = {}) {
   const entries = Array.isArray(audits) ? audits : [];
 
   if (entries.length === 0) {
-    return `<section class="${escapeAttr(className)} pivot-audit-viewer--empty"><div class="pivot-audit-viewer__empty">${escapeHTML(emptyText)}</div></section>`;
+    return `<section class="${escapeAttr(className)} pivot-audit-viewer--empty" role="region" aria-label="${escapeAttr(title)}"><div class="pivot-audit-viewer__empty" role="status">${escapeHTML(emptyText)}</div></section>`;
   }
 
   const statusCounts = countAuditStatuses(entries);
   const decisionCounts = countAuditDecisions(entries);
 
   return [
-    `<section class="${escapeAttr(className)}">`,
+    `<section class="${escapeAttr(className)}" role="region" aria-label="${escapeAttr(title)}">`,
     '<header class="pivot-audit-viewer__header">',
     `<strong class="pivot-audit-viewer__title">${escapeHTML(title)}</strong>`,
     `<div class="pivot-audit-viewer__message">${escapeHTML(options.message ?? `Showing ${entries.length} audit events.`)}</div>`,
@@ -137,11 +140,11 @@ export function renderCapabilityBrowserToHTML(capabilities = [], options = {}) {
   const summary = summarizeCapabilities(entries);
 
   if (entries.length === 0) {
-    return `<section class="${escapeAttr(className)} pivot-capability-browser--empty"><div class="pivot-capability-browser__empty">${escapeHTML(emptyText)}</div></section>`;
+    return `<section class="${escapeAttr(className)} pivot-capability-browser--empty" role="region" aria-label="${escapeAttr(title)}"><div class="pivot-capability-browser__empty" role="status">${escapeHTML(emptyText)}</div></section>`;
   }
 
   return [
-    `<section class="${escapeAttr(className)}">`,
+    `<section class="${escapeAttr(className)}" role="region" aria-label="${escapeAttr(title)}">`,
     '<header class="pivot-capability-browser__header">',
     `<strong class="pivot-capability-browser__title">${escapeHTML(title)}</strong>`,
     `<div class="pivot-capability-browser__message">${escapeHTML(options.message ?? `Showing ${entries.length} capabilities.`)}</div>`,
@@ -174,13 +177,14 @@ export function renderPlanPreviewToHTML(preview, options = {}) {
   const blockedCount = nodes.filter((item) => !item?.preview?.ok).length;
   const confirmationCount = nodes.filter((item) => Boolean(item?.preview?.data?.requiresConfirmation)).length;
   const timeline = preview?.explain?.timeline ?? [];
+  const ariaLabel = options.ariaLabel ?? plan?.intent ?? 'Plan preview';
 
   if (!preview || typeof preview !== 'object') {
-    return `<section class="${escapeAttr(className)} pivot-plan-preview--empty"><div class="pivot-plan-preview__empty">${escapeHTML(emptyText)}</div></section>`;
+    return `<section class="${escapeAttr(className)} pivot-plan-preview--empty" role="region" aria-label="${escapeAttr(ariaLabel)}"><div class="pivot-plan-preview__empty" role="status">${escapeHTML(emptyText)}</div></section>`;
   }
 
   return [
-    `<section class="${escapeAttr(className)} pivot-plan-preview--${escapeAttr(status)}">`,
+    `<section class="${escapeAttr(className)} pivot-plan-preview--${escapeAttr(status)}" role="region" aria-label="${escapeAttr(ariaLabel)}">`,
     '<header class="pivot-plan-preview__header">',
     `<span class="pivot-plan-preview__status">${escapeHTML(status)}</span>`,
     `<strong class="pivot-plan-preview__message">${escapeHTML(preview?.message ?? '')}</strong>`,
@@ -209,7 +213,7 @@ export function renderPlanGraphToHTML(value, options = {}) {
   const graph = normalizePlanGraphInput(value);
 
   if (!graph || graph.entries.length === 0) {
-    return `<section class="${escapeAttr(className)} pivot-plan-graph--empty"><div class="pivot-plan-graph__empty">${escapeHTML(emptyText)}</div></section>`;
+    return `<section class="${escapeAttr(className)} pivot-plan-graph--empty" role="region" aria-label="${escapeAttr(options.title ?? 'Plan graph')}"><div class="pivot-plan-graph__empty" role="status">${escapeHTML(emptyText)}</div></section>`;
   }
 
   const title = options.title ?? graph.plan?.intent ?? graph.plan?.id ?? 'Plan graph';
@@ -218,7 +222,7 @@ export function renderPlanGraphToHTML(value, options = {}) {
   const summary = summarizePlanGraph(graph);
 
   return [
-    `<section class="${escapeAttr(className)}">`,
+    `<section class="${escapeAttr(className)}" role="region" aria-label="${escapeAttr(title)}">`,
     '<header class="pivot-plan-graph__header">',
     `<strong class="pivot-plan-graph__title">${escapeHTML(title)}</strong>`,
     `<div class="pivot-plan-graph__message">${escapeHTML(message)}</div>`,
@@ -247,45 +251,31 @@ export function renderPlanGraphToHTML(value, options = {}) {
 }
 
 export function mountTimeline(target, timeline = [], options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderTimelineToHTML(timeline, options);
-  return element;
+  return mountHTML(target, renderTimelineToHTML(timeline, options), 'timeline', options);
 }
 
 export function mountResult(target, result, options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderResultToHTML(result, options);
-  return element;
+  return mountHTML(target, renderResultToHTML(result, options), 'result', options);
 }
 
 export function mountPlanPreview(target, preview, options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderPlanPreviewToHTML(preview, options);
-  return element;
+  return mountHTML(target, renderPlanPreviewToHTML(preview, options), 'plan-preview', options);
 }
 
 export function mountTimelineDetail(target, result, options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderTimelineDetailToHTML(result, options);
-  return element;
+  return mountHTML(target, renderTimelineDetailToHTML(result, options), 'timeline-detail', options);
 }
 
 export function mountAuditViewer(target, audits = [], options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderAuditViewerToHTML(audits, options);
-  return element;
+  return mountHTML(target, renderAuditViewerToHTML(audits, options), 'audit-viewer', options);
 }
 
 export function mountCapabilityBrowser(target, capabilities = [], options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderCapabilityBrowserToHTML(capabilities, options);
-  return element;
+  return mountHTML(target, renderCapabilityBrowserToHTML(capabilities, options), 'capability-browser', options);
 }
 
 export function mountPlanGraph(target, value, options = {}) {
-  const element = resolveTarget(target);
-  element.innerHTML = renderPlanGraphToHTML(value, options);
-  return element;
+  return mountHTML(target, renderPlanGraphToHTML(value, options), 'plan-graph', options);
 }
 
 function resolveTarget(target) {
@@ -304,6 +294,25 @@ function resolveTarget(target) {
   }
 
   return target;
+}
+
+function mountHTML(target, html, mountedType, options = {}) {
+  const element = resolveTarget(target);
+  element.innerHTML = html;
+
+  if (typeof element.setAttribute === 'function') {
+    element.setAttribute('data-pivot-mounted', mountedType);
+
+    if (options.ariaLabel) {
+      element.setAttribute('aria-label', String(options.ariaLabel));
+    }
+
+    if (options.liveRegion !== false) {
+      element.setAttribute('aria-live', 'polite');
+    }
+  }
+
+  return element;
 }
 
 function escapeHTML(value) {

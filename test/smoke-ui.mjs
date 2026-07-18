@@ -15,6 +15,13 @@ import {
   renderCapabilityBrowserToHTML,
   renderPlanGraphToHTML,
   renderPlanPreviewToHTML,
+  mountAuditViewer,
+  mountCapabilityBrowser,
+  mountPlanGraph,
+  mountPlanPreview,
+  mountResult,
+  mountTimelineDetail,
+  mountTimeline,
   renderTimelineDetailToHTML,
   redactParams,
   renderResultToHTML,
@@ -82,6 +89,10 @@ if (!timelineHTML.includes('pivot-timeline') || !resultHTML.includes('pivot-resu
   throw new Error('Expected UI renderers to produce timeline and result markup.');
 }
 
+if (!timelineHTML.includes('aria-label="Timeline"') || !resultHTML.includes('role="region"') || !planPreviewHTML.includes('role="region"') || !timelineDetailHTML.includes('role="region"') || !auditViewerHTML.includes('role="region"') || !capabilityBrowserHTML.includes('role="region"') || !planGraphHTML.includes('role="region"')) {
+  throw new Error('Expected UI renderers to expose accessible region semantics.');
+}
+
 if (!planPreviewHTML.includes('pivot-plan-preview__node') || !planPreviewHTML.includes('validate-parent')) {
   throw new Error('Expected plan preview renderer to include node summaries.');
 }
@@ -135,8 +146,45 @@ if (escapedHTML.includes('<script>') || escapedHTML.includes('<img')) {
   throw new Error('Expected UI renderer to escape HTML content.');
 }
 
+if (!renderTimelineToHTML([], { ariaLabel: 'Activity timeline' }).includes('role="status"')) {
+  throw new Error('Expected empty timeline renderer to expose a status role.');
+}
+
+const mountTarget = createMountTarget();
+mountTimeline(mountTarget, [{ stage: 'validation', status: 'passed', message: '<b>safe</b>' }], { ariaLabel: 'Activity timeline' });
+
+if (mountTarget.attributes['data-pivot-mounted'] !== 'timeline' || mountTarget.attributes['aria-live'] !== 'polite' || mountTarget.attributes['aria-label'] !== 'Activity timeline' || mountTarget.innerHTML.includes('<b>safe</b>')) {
+  throw new Error('Expected mountTimeline to set mount metadata and escape hostile text.');
+}
+
+mountResult(mountTarget, result, { ariaLabel: 'Execution result' });
+
+if (mountTarget.attributes['data-pivot-mounted'] !== 'result') {
+  throw new Error('Expected mountResult to update the mount marker.');
+}
+
+mountPlanPreview(mountTarget, planPreview, { ariaLabel: 'Plan preview region' });
+mountTimelineDetail(mountTarget, result, { ariaLabel: 'Timeline detail region' });
+mountAuditViewer(mountTarget, auditRuntime.getAuditEvents(), { ariaLabel: 'Audit viewer region' });
+mountCapabilityBrowser(mountTarget, runtime.listCapabilities(), { ariaLabel: 'Capability browser region' });
+mountPlanGraph(mountTarget, conditionalPlanResult, { ariaLabel: 'Plan graph region' });
+
+if (mountTarget.attributes['data-pivot-mounted'] !== 'plan-graph') {
+  throw new Error('Expected mountPlanGraph to update the mount marker.');
+}
+
 const css = readFileSync(new URL('../packages/ui/src/pivot.css', import.meta.url), 'utf8');
 
 if (!css.includes('.pivot-result') || !css.includes('.pivot-timeline') || !css.includes('.pivot-capability-browser') || !css.includes('.pivot-plan-graph')) {
   throw new Error('Expected default PIVOT UI CSS to include result, timeline, capability, and graph styles.');
+}
+
+function createMountTarget() {
+  return {
+    innerHTML: '',
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    }
+  };
 }
