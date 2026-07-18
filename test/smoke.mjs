@@ -30,6 +30,8 @@ const runtime = createPivotRuntime({
 });
 
 const approvalCalls = [];
+let activeParallelExecutions = 0;
+let maxParallelExecutions = 0;
 const approvalRuntime = createPivotRuntime({
   policies: [createPermissionPolicy()],
   ui: {
@@ -321,6 +323,38 @@ rejectionRuntime.registerCapability({
     parentId: { type: 'string', required: true }
   },
   execute: async ({ params }) => ({ id: 'finalized-1', ...params })
+});
+
+runtime.registerCapability({
+  name: 'organization.parallel.alpha',
+  resource: 'organization',
+  action: ActionType.EXECUTE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => {
+    activeParallelExecutions += 1;
+    maxParallelExecutions = Math.max(maxParallelExecutions, activeParallelExecutions);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    activeParallelExecutions -= 1;
+    return { id: 'parallel-alpha' };
+  }
+});
+
+runtime.registerCapability({
+  name: 'organization.parallel.beta',
+  resource: 'organization',
+  action: ActionType.EXECUTE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => {
+    activeParallelExecutions += 1;
+    maxParallelExecutions = Math.max(maxParallelExecutions, activeParallelExecutions);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    activeParallelExecutions -= 1;
+    return { id: 'parallel-beta' };
+  }
 });
 
 const command = createCommand({
@@ -660,6 +694,15 @@ const rejectedApprovalPlan = createPlan({
   ]
 });
 
+const parallelPlan = createPlan({
+  intent: 'Run two independent organization actions in parallel.',
+  nodes: [
+    { id: 'parallel-alpha', capability: 'organization.parallel.alpha' },
+    { id: 'parallel-beta', capability: 'organization.parallel.beta' }
+  ],
+  edges: []
+});
+
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const invalidConditionalPlanValidation = validatePlan(invalidConditionalPlan);
@@ -716,6 +759,12 @@ const rejectedApprovalPlanResult = await rejectionRuntime.executePlan(rejectedAp
   actor: {
     id: 'user-1',
     permissions: ['organization:query', 'organization:create']
+  }
+});
+const parallelPlanResult = await runtime.executePlan(parallelPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query']
   }
 });
 const conditionalPlanResult = await runtime.executePlan(conditionalPlan, {
@@ -837,6 +886,14 @@ if (rejectedApprovalPlanResult.data.nodes.find((item) => item.node.id === 'final
 
 if (!approvalCalls.length || approvalCalls[0].approval.title !== 'Approve branch creation') {
   throw new Error('Expected approval adapter to receive approval context.');
+}
+
+if (!parallelPlanResult.ok || parallelPlanResult.data.nodes.length !== 2 || maxParallelExecutions < 2) {
+  throw new Error('Expected parallel plan execution to run independent nodes concurrently.');
+}
+
+if (!parallelPlanResult.explain.timeline.some((step) => step.stage === 'plan.layer' && step.status === 'started' && step.metadata.parallel)) {
+  throw new Error('Expected parallel plan timeline to record a parallel layer.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {

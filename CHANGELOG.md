@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.12 - Parallel Plan Layers
+
+### Added
+
+- Dependency layers for plan execution via `getExecutionLayers()`.
+- Parallel execution for independent nodes in the same plan layer.
+- Layer-level timeline events for plan execution.
+- Smoke coverage for concurrent independent plan nodes.
+
 ## 0.2.11 - Human Approval Nodes
 
 ### Added

@@ -147,6 +147,7 @@ const planResult = await runtime.executePlan(plan, context);
 Plan nodes may define `compensate` so successful steps can be reversed when a later step fails.
 
 Plans can also include conditional branches and approval nodes when a workflow needs data-dependent routing or a human gate before execution continues.
+Independent plan nodes in the same dependency layer may execute in parallel.
 
 Every command and plan result can include `explain.timeline`, a UI-ready list of validation, policy, confirmation, execution, failure, and compensation steps.
 

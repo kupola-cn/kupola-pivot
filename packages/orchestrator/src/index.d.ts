@@ -71,4 +71,5 @@ export function addNode(plan: PivotPlan, node: PivotPlanNode): PivotPlan;
 export function addEdge(plan: PivotPlan, edge: PivotPlanEdge): PivotPlan;
 export function validatePlan(plan: unknown, options?: PivotPlanValidationOptions): PivotPlanValidationResult;
 export function getExecutionOrder(plan: PivotPlan): PivotPlanNode[];
+export function getExecutionLayers(plan: PivotPlan): PivotPlanNode[][];
 export function evaluatePlanEdgeCondition(edge: PivotPlanEdge, sourceResult: unknown): boolean;

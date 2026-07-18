@@ -96,6 +96,10 @@ export function validatePlan(plan, options = {}) {
 }
 
 export function getExecutionOrder(plan) {
+  return getExecutionLayers(plan).flat();
+}
+
+export function getExecutionLayers(plan) {
   const validation = validatePlan(plan);
 
   if (!validation.valid) {
@@ -111,23 +115,28 @@ export function getExecutionOrder(plan) {
     outgoing.get(edge.from).push(edge.to);
   }
 
-  const queue = plan.nodes.filter((node) => incomingCount.get(node.id) === 0).map((node) => node.id);
-  const ordered = [];
+  let queue = plan.nodes.filter((node) => incomingCount.get(node.id) === 0).map((node) => node.id);
+  const layers = [];
 
   while (queue.length > 0) {
-    const id = queue.shift();
-    ordered.push(nodesById.get(id));
+    const currentLayer = queue.map((id) => nodesById.get(id));
+    layers.push(currentLayer);
+    const nextQueue = [];
 
-    for (const nextId of outgoing.get(id)) {
-      incomingCount.set(nextId, incomingCount.get(nextId) - 1);
+    for (const id of queue) {
+      for (const nextId of outgoing.get(id)) {
+        incomingCount.set(nextId, incomingCount.get(nextId) - 1);
 
-      if (incomingCount.get(nextId) === 0) {
-        queue.push(nextId);
+        if (incomingCount.get(nextId) === 0) {
+          nextQueue.push(nextId);
+        }
       }
     }
+
+    queue = nextQueue;
   }
 
-  return ordered;
+  return layers;
 }
 
 export function evaluatePlanEdgeCondition(edge, sourceResult) {

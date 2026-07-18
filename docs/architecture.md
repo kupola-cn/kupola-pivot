@@ -87,7 +87,7 @@ This keeps early workflow modeling practical without forcing a visual workflow e
 
 ## Plan Execution
 
-`executePlan(plan, context)` runs a validated directed acyclic plan in dependency order. Each node resolves a registered capability and is executed through the same command pipeline as `executeCommand`, including validation, policy checks, confirmation, execution, result wrapping, and audit events.
+`executePlan(plan, context)` runs a validated directed acyclic plan in dependency order. Independent nodes in the same dependency layer may execute in parallel. Each node resolves a registered capability and is executed through the same command pipeline as `executeCommand`, including validation, policy checks, confirmation, execution, result wrapping, and audit events.
 
 The default behavior stops on the first failed node. Apps can pass `{ stopOnError: false }` to continue and collect all node results.
 

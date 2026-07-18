@@ -268,6 +268,8 @@ const result = await runtime.executePlan(plan, context);
 
 Each node is converted into a command and executed through the same validation, policy, confirmation, execution, and audit path as `executeCommand`.
 
+Independent nodes in the same dependency layer may run in parallel. `getExecutionLayers()` returns the layer structure if a host app wants to inspect or visualize it.
+
 ## Conditional Plan Edges
 
 Plan edges can include declarative conditions. PIVOT does not run arbitrary JavaScript expressions from plans.

@@ -29,20 +29,20 @@ export {
   escalate,
   mapHttpStatusToPolicy
 } from '@kupola/pivot-policy';
-export { addEdge, addNode, createPlan, evaluatePlanEdgeCondition, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
+export { addEdge, addNode, createPlan, evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 export { createTrustedUIAdapter, mountResult, mountTimeline, renderResultToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
 import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, redactParams } from '@kupola/pivot-protocol';
 import { PolicyDecision, confirm, createPolicyPipeline } from '@kupola/pivot-policy';
-import { evaluatePlanEdgeCondition, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
+import { evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 import { createCapabilityRegistry } from './capability-registry.js';
 import { createTrustedUIAdapter } from '@kupola/pivot-ui';
 
 export function createPivotRuntime(options = {}) {
   const registry = options.registry ?? createCapabilityRegistry(options.capabilityRegistry);
   const policyPipeline = options.policyPipeline ?? createPolicyPipeline(options.policies);
-  const ui = options.ui ?? createTrustedUIAdapter();
+  const ui = createTrustedUIAdapter(options.ui);
   const planLimits = normalizePlanLimits(options.planLimits);
   const auditEvents = [];
 
@@ -402,7 +402,8 @@ export function createPivotRuntime(options = {}) {
 
     const stopOnError = options.stopOnError ?? true;
     const compensateOnError = options.compensateOnError ?? true;
-    const orderedNodes = getExecutionOrder(plan);
+    const executionLayers = getExecutionLayers(plan);
+    const orderedNodes = executionLayers.flat();
     const nodeResults = [];
     const resultsByNodeId = {};
     const incomingEdgesByNodeId = groupIncomingEdges(plan);
@@ -411,129 +412,43 @@ export function createPivotRuntime(options = {}) {
       nodes: orderedNodes.length
     }));
 
-    for (const node of orderedNodes) {
-      const runState = getPlanNodeRunState(node, incomingEdgesByNodeId, resultsByNodeId);
-
-      if (!runState.run) {
-        const result = createSkippedPlanNodeResult(node, runState.reason, runState);
-
-        nodeResults.push({ node, command: null, result });
-        resultsByNodeId[node.id] = result;
-        timeline.push(createTimelineStep('plan.node', 'skipped', `Plan node skipped: ${node.id}`, {
-          nodeId: node.id,
-          capability: node.capability,
-          reason: runState.reason,
-          activeIncomingEdges: runState.activeIncomingEdges,
-          conditionalIncomingEdges: runState.conditionalIncomingEdges
-        }));
-        continue;
-      }
-
-      timeline.push(createTimelineStep('plan.node', 'started', `Plan node started: ${node.id}`, {
-        nodeId: node.id,
-        capability: node.capability
+    for (const [layerIndex, layer] of executionLayers.entries()) {
+      timeline.push(createTimelineStep('plan.layer', 'started', `Plan layer started: ${layerIndex + 1}`, {
+        layerIndex,
+        nodeIds: layer.map((node) => node.id),
+        nodeCount: layer.length,
+        parallel: layer.length > 1
       }));
 
-      if (isApprovalNode(node)) {
-        const result = await executeApprovalNode({ plan, node, context, timeline, ui, emitAudit });
-
-        nodeResults.push({ node, command: null, result });
-        resultsByNodeId[node.id] = result;
-
-        if (!result.ok && stopOnError) {
-          const compensations = compensateOnError
-            ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
-            : [];
-
-          addCompensationTimeline(timeline, compensations);
-          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
-        }
-
-        continue;
-      }
-
-      const capability = registry.get(node.capability);
-
-      if (!capability) {
-        const result = createResult({
-          ok: false,
-          message: `Plan node capability is not registered: ${node.capability}`,
-          explain: { nodeId: node.id, capability: node.capability }
-        });
-
-        nodeResults.push({ node, command: null, result });
-        resultsByNodeId[node.id] = result;
-        timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
-          nodeId: node.id,
-          capability: node.capability,
-          reason: result.message
-        }));
-
-        if (stopOnError) {
-          const compensations = compensateOnError
-            ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
-            : [];
-
-          addCompensationTimeline(timeline, compensations);
-          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
-        }
-
-        continue;
-      }
-
-      let command;
-
-      try {
-        command = node.command
-          ? resolvePlanCommand(node.command, resultsByNodeId)
-          : createPlanNodeCommand(plan, node, capability, resultsByNodeId);
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        const result = createResult({
-          ok: false,
-          message: 'Plan node params could not be resolved.',
-          explain: { nodeId: node.id, capability: node.capability, error: reason }
-        });
-
-        nodeResults.push({ node, command: null, result });
-        resultsByNodeId[node.id] = result;
-        timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
-          nodeId: node.id,
-          capability: node.capability,
-          reason
-        }));
-
-        if (stopOnError) {
-          const compensations = compensateOnError
-            ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
-            : [];
-
-          addCompensationTimeline(timeline, compensations);
-          return createPlanResult(plan, nodeResults, false, 'Plan execution failed.', compensations, timeline);
-        }
-
-        continue;
-      }
-
-      const result = await executeCommand(command, {
-        ...context,
+      const layerResults = await Promise.all(layer.map((node) => executePlanNode({
         plan,
         node,
-        planResults: resultsByNodeId
-      });
+        context,
+        registry,
+        executeCommand,
+        ui,
+        emitAudit,
+        incomingEdgesByNodeId,
+        resultsByNodeId
+      })));
 
-      nodeResults.push({ node, command, result });
-      resultsByNodeId[node.id] = result;
-      timeline.push(createTimelineStep('plan.node', result.ok ? 'executed' : 'failed', `Plan node ${result.ok ? 'executed' : 'failed'}: ${node.id}`, {
-        nodeId: node.id,
-        capability: node.capability,
-        commandId: command.id,
-        reason: result.message
+      for (const entry of layerResults) {
+        nodeResults.push({ node: entry.node, command: entry.command, result: entry.result });
+        resultsByNodeId[entry.node.id] = entry.result;
+        timeline.push(...entry.timeline);
+      }
+
+      const failedNodes = layerResults.filter((item) => !item.result.ok);
+      timeline.push(createTimelineStep('plan.layer', failedNodes.length > 0 ? 'failed' : 'executed', failedNodes.length > 0 ? `Plan layer completed with failures: ${layerIndex + 1}` : `Plan layer executed: ${layerIndex + 1}`, {
+        layerIndex,
+        nodeIds: layer.map((node) => node.id),
+        failedNodes: failedNodes.length,
+        parallel: layer.length > 1
       }));
 
-      if (!result.ok && stopOnError) {
+      if (failedNodes.length > 0 && stopOnError) {
         const compensations = compensateOnError
-          ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: node })
+          ? await compensatePlan({ plan, nodeResults, context, resultsByNodeId, failedNode: failedNodes[0]?.node })
           : [];
 
         addCompensationTimeline(timeline, compensations);
@@ -702,6 +617,90 @@ function createApprovalPreview(plan, node) {
       requiresApproval: true
     }
   });
+}
+
+async function executePlanNode({ plan, node, context, registry, executeCommand, ui, emitAudit, incomingEdgesByNodeId, resultsByNodeId }) {
+  const timeline = [];
+  const runState = getPlanNodeRunState(node, incomingEdgesByNodeId, resultsByNodeId);
+
+  if (!runState.run) {
+    const result = createSkippedPlanNodeResult(node, runState.reason, runState);
+    timeline.push(createTimelineStep('plan.node', 'skipped', `Plan node skipped: ${node.id}`, {
+      nodeId: node.id,
+      capability: node.capability,
+      reason: runState.reason,
+      activeIncomingEdges: runState.activeIncomingEdges,
+      conditionalIncomingEdges: runState.conditionalIncomingEdges
+    }));
+    return { node, command: null, result, timeline };
+  }
+
+  timeline.push(createTimelineStep('plan.node', 'started', `Plan node started: ${node.id}`, {
+    nodeId: node.id,
+    capability: node.capability
+  }));
+
+  if (isApprovalNode(node)) {
+    const result = await executeApprovalNode({ plan, node, context, timeline, ui, emitAudit });
+    return { node, command: null, result, timeline };
+  }
+
+  const capability = registry.get(node.capability);
+
+  if (!capability) {
+    const result = createResult({
+      ok: false,
+      message: `Plan node capability is not registered: ${node.capability}`,
+      explain: { nodeId: node.id, capability: node.capability }
+    });
+
+    timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
+      nodeId: node.id,
+      capability: node.capability,
+      reason: result.message
+    }));
+
+    return { node, command: null, result, timeline };
+  }
+
+  let command;
+
+  try {
+    command = node.command
+      ? resolvePlanCommand(node.command, resultsByNodeId)
+      : createPlanNodeCommand(plan, node, capability, resultsByNodeId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const result = createResult({
+      ok: false,
+      message: 'Plan node params could not be resolved.',
+      explain: { nodeId: node.id, capability: node.capability, error: reason }
+    });
+
+    timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
+      nodeId: node.id,
+      capability: node.capability,
+      reason
+    }));
+
+    return { node, command: null, result, timeline };
+  }
+
+  const result = await executeCommand(command, {
+    ...context,
+    plan,
+    node,
+    planResults: resultsByNodeId
+  });
+
+  timeline.push(createTimelineStep('plan.node', result.ok ? 'executed' : 'failed', `Plan node ${result.ok ? 'executed' : 'failed'}: ${node.id}`, {
+    nodeId: node.id,
+    capability: node.capability,
+    commandId: command.id,
+    reason: result.message
+  }));
+
+  return { node, command, result, timeline };
 }
 
 async function executeApprovalNode({ plan, node, context, timeline, ui, emitAudit }) {
