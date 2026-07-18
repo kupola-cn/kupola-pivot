@@ -318,6 +318,18 @@ runtime.registerCapability({
   execute: async ({ params }) => ({ id: 'partial-1', name: params.name })
 });
 
+runtime.registerCapability({
+  name: 'organization.rollback.note',
+  resource: 'organization',
+  action: ActionType.EXECUTE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {
+    note: { type: 'string', required: true }
+  },
+  execute: async ({ params }) => ({ noted: true, note: params.note })
+});
+
 approvalRuntime.registerCapability({
   name: 'organization.classify',
   resource: 'organization',
@@ -1100,9 +1112,21 @@ const failingPlan = createPlan({
       id: 'create-branch-with-compensation',
       capability: 'organization.create',
       params: { name: 'Branch F', parentId: 'group' },
-      compensate: {
-        capability: 'organization.delete',
-        params: { id: 'org-1' }
+      compensate: [
+        {
+          capability: 'organization.delete',
+          params: { id: 'org-1' }
+        },
+        {
+          capability: 'organization.rollback.note',
+          intent: 'Record rollback for branch F.',
+          params: { note: 'branch-f-rollback' },
+          metadata: { reason: 'cleanup' }
+        }
+      ],
+      compensation: {
+        order: 'forward',
+        stopOnFailure: true
       }
     },
     { id: 'fail-after-create', capability: 'organization.fail' }
@@ -1281,11 +1305,15 @@ if (failingPlanResult.ok || failingPlanResult.data.compensations.length !== 1) {
   throw new Error('Expected failed plan to run one compensation.');
 }
 
-if (!failingPlanResult.data.compensations[0].result.ok) {
+if (!failingPlanResult.data.compensations[0].result.ok || failingPlanResult.data.compensations[0].steps.length !== 2) {
   throw new Error('Expected plan compensation to succeed.');
 }
 
-if (!failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.compensation')) {
+if (failingPlanResult.data.compensations[0].steps[0].command?.capability !== 'organization.delete' || failingPlanResult.data.compensations[0].steps[1].command?.capability !== 'organization.rollback.note') {
+  throw new Error('Expected plan compensation steps to execute in declared order.');
+}
+
+if (!failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.compensation.step') || !failingPlanResult.explain.timeline.some((step) => step.stage === 'plan.compensation')) {
   throw new Error('Expected failed plan timeline to include compensation steps.');
 }
 

@@ -562,12 +562,15 @@ export function createPivotRuntime(options = {}) {
     const successfulNodes = nodeResults.filter((item) => item.result.ok && !item.result.data?.skipped && !isApprovalNode(item.node)).reverse();
 
     for (const item of successfulNodes) {
-      const compensation = item.node.compensate;
+      const compensationSteps = normalizeCompensationSteps(item.node);
+      const strategy = normalizeCompensationStrategy(item.node.compensation);
 
-      if (!compensation) {
+      if (compensationSteps.length === 0) {
         compensations.push({
           node: item.node,
           command: null,
+          steps: [],
+          strategy,
           result: createResult({
             ok: true,
             message: 'No compensation configured.',
@@ -577,49 +580,87 @@ export function createPivotRuntime(options = {}) {
         continue;
       }
 
-      const capabilityName = compensation.capability ?? item.node.compensateCapability;
-      const capability = registry.get(capabilityName);
+      const orderedSteps = strategy.order === 'forward' ? compensationSteps : [...compensationSteps].reverse();
+      const stepResults = [];
 
-      if (!capability) {
-        compensations.push({
-          node: item.node,
-          command: null,
-          result: createResult({
+      for (const [stepIndex, step] of orderedSteps.entries()) {
+        if (!shouldRunCompensationStep(step)) {
+          stepResults.push(createSkippedCompensationStep(step, stepIndex));
+          continue;
+        }
+
+        const capabilityName = step.capability ?? item.node.compensateCapability;
+        const capability = registry.get(capabilityName);
+
+        if (!capability) {
+          const result = createResult({
             ok: false,
             message: `Compensation capability is not registered: ${String(capabilityName)}`,
-            explain: { capability: capabilityName }
-          })
+            explain: { capability: capabilityName, stepIndex }
+          });
+
+          stepResults.push({
+            step,
+            command: null,
+            result,
+            skipped: false
+          });
+
+          if (strategy.stopOnFailure !== false) {
+            break;
+          }
+
+          continue;
+        }
+
+        const command = step.command ? resolvePlanCommand(step.command, resultsByNodeId) : createCommand({
+          intent: step.intent ?? `Compensate ${item.node.id}`,
+          resource: capability.resource,
+          action: capability.action,
+          capability: capability.name,
+          risk: step.risk ?? capability.risk,
+          params: resolvePlanParams(step.params ?? {}, resultsByNodeId),
+          metadata: {
+            ...(step.metadata ?? {}),
+            planId: plan.id,
+            nodeId: item.node.id,
+            failedNodeId: failedNode?.id,
+            compensation: true,
+            compensationStep: stepIndex
+          }
         });
-        continue;
+
+        const result = await executeCommand(command, {
+          ...context,
+          plan,
+          node: item.node,
+          failedNode,
+          compensatedNodeResult: item.result,
+          planResults: resultsByNodeId,
+          compensating: true
+        });
+
+        stepResults.push({
+          step,
+          command,
+          result,
+          skipped: false
+        });
+
+        if (!result.ok && strategy.stopOnFailure !== false) {
+          break;
+        }
       }
 
-      const command = compensation.command ? resolvePlanCommand(compensation.command, resultsByNodeId) : createCommand({
-        intent: compensation.intent ?? `Compensate ${item.node.id}`,
-        resource: capability.resource,
-        action: capability.action,
-        capability: capability.name,
-        risk: compensation.risk ?? capability.risk,
-        params: resolvePlanParams(compensation.params ?? {}, resultsByNodeId),
-        metadata: {
-          ...(compensation.metadata ?? {}),
-          planId: plan.id,
-          nodeId: item.node.id,
-          failedNodeId: failedNode?.id,
-          compensation: true
-        }
-      });
+      const aggregateResult = createCompensationAggregateResult(item.node, stepResults, strategy);
 
-      const result = await executeCommand(command, {
-        ...context,
-        plan,
+      compensations.push({
         node: item.node,
-        failedNode,
-        compensatedNodeResult: item.result,
-        planResults: resultsByNodeId,
-        compensating: true
+        command: stepResults.find((entry) => entry.command)?.command ?? null,
+        steps: stepResults,
+        strategy,
+        result: aggregateResult
       });
-
-      compensations.push({ node: item.node, command, result });
     }
 
     return compensations;
@@ -1549,6 +1590,8 @@ function normalizeLimit(value, fallback) {
 
 function createPlanResult(plan, nodeResults, ok, message, compensations = [], timeline = []) {
   const skippedNodes = nodeResults.filter((item) => item.result.data?.skipped).length;
+  const compensationSteps = compensations.reduce((count, compensation) => count + countCompensationSteps(compensation.steps), 0);
+  const failedCompensationSteps = compensations.reduce((count, compensation) => count + countFailedCompensationSteps(compensation.steps), 0);
 
   return createResult({
     ok,
@@ -1564,7 +1607,9 @@ function createPlanResult(plan, nodeResults, ok, message, compensations = [], ti
       skippedNodes,
       failedNodes: nodeResults.filter((item) => !item.result.ok).length,
       compensationNodes: compensations.length,
+      compensationSteps,
       failedCompensations: compensations.filter((item) => !item.result.ok).length,
+      failedCompensationSteps,
       timeline
     }
   });
@@ -1572,12 +1617,116 @@ function createPlanResult(plan, nodeResults, ok, message, compensations = [], ti
 
 function addCompensationTimeline(timeline, compensations) {
   for (const compensation of compensations) {
+    for (const [index, step] of (compensation.steps ?? []).entries()) {
+      timeline.push(createTimelineStep(
+        'plan.compensation.step',
+        step.skipped ? 'skipped' : step.result.ok ? 'executed' : 'failed',
+        step.skipped
+          ? `Plan compensation step skipped: ${compensation.node.id}`
+          : `Plan compensation step ${step.result.ok ? 'executed' : 'failed'}: ${compensation.node.id}`,
+        {
+          nodeId: compensation.node.id,
+          stepIndex: index,
+          commandId: step.command?.id ?? null,
+          reason: step.result.message,
+          skipped: Boolean(step.skipped)
+        }
+      ));
+    }
+
     timeline.push(createTimelineStep('plan.compensation', compensation.result.ok ? 'executed' : 'failed', `Plan compensation ${compensation.result.ok ? 'executed' : 'failed'}: ${compensation.node.id}`, {
       nodeId: compensation.node.id,
       commandId: compensation.command?.id,
-      reason: compensation.result.message
+      reason: compensation.result.message,
+      steps: Array.isArray(compensation.steps) ? compensation.steps.length : 0,
+      strategy: compensation.strategy ?? {}
     }));
   }
+}
+
+function normalizeCompensationSteps(node) {
+  if (!node) {
+    return [];
+  }
+
+  if (Array.isArray(node.compensate)) {
+    return node.compensate.filter((step) => isPlainObject(step));
+  }
+
+  if (isPlainObject(node.compensate)) {
+    return [node.compensate];
+  }
+
+  if (typeof node.compensateCapability === 'string' && node.compensateCapability.trim() !== '') {
+    return [{ capability: node.compensateCapability }];
+  }
+
+  return [];
+}
+
+function normalizeCompensationStrategy(strategy) {
+  if (!isPlainObject(strategy)) {
+    return {
+      order: 'reverse',
+      stopOnFailure: true
+    };
+  }
+
+  return {
+    order: strategy.order === 'forward' ? 'forward' : 'reverse',
+    stopOnFailure: strategy.stopOnFailure !== false
+  };
+}
+
+function shouldRunCompensationStep(step) {
+  return step?.when !== 'on-success';
+}
+
+function createSkippedCompensationStep(step, stepIndex) {
+  return {
+    step,
+    command: null,
+    skipped: true,
+    result: createResult({
+      ok: true,
+      message: 'Compensation step skipped.',
+      data: { skipped: true, stepIndex }
+    })
+  };
+}
+
+function createCompensationAggregateResult(node, stepResults, strategy) {
+  const executedSteps = stepResults.filter((step) => !step.skipped);
+  const failedSteps = executedSteps.filter((step) => !step.result.ok);
+  const skippedSteps = stepResults.filter((step) => step.skipped);
+  const ok = executedSteps.length === 0 ? true : failedSteps.length === 0;
+
+  return createResult({
+    ok,
+    message: ok ? 'Plan compensation executed.' : 'Plan compensation completed with failures.',
+    data: {
+      nodeId: node.id,
+      skipped: executedSteps.length === 0,
+      steps: stepResults,
+      strategy
+    },
+    explain: {
+      nodeId: node.id,
+      steps: stepResults.length,
+      executedSteps: executedSteps.length,
+      failedSteps: failedSteps.length,
+      skippedSteps: skippedSteps.length,
+      strategy
+    }
+  });
+}
+
+function countCompensationSteps(stepResults = []) {
+  return Array.isArray(stepResults) ? stepResults.filter((step) => !step.skipped).length : 0;
+}
+
+function countFailedCompensationSteps(stepResults = []) {
+  return Array.isArray(stepResults) ? stepResults.filter((step) => !step.skipped && !step.result.ok).length : 0;
 }
 
 function createTimelineStep(stage, status, message, metadata = {}) {

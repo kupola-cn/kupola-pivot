@@ -18,16 +18,25 @@ export interface PivotPlanNode {
     assignee?: string;
     metadata?: Record<string, unknown>;
   };
-  compensate?: {
-    capability?: string;
-    command?: unknown;
-    intent?: string;
-    risk?: string;
-    params?: Record<string, unknown>;
-    metadata?: Record<string, unknown>;
-  };
+  compensate?: PivotPlanNodeCompensation | PivotPlanNodeCompensation[];
+  compensation?: PivotPlanNodeCompensationStrategy;
   compensateCapability?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface PivotPlanNodeCompensation {
+  capability?: string;
+  command?: unknown;
+  intent?: string;
+  risk?: string;
+  params?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  when?: 'always' | 'on-failure' | 'on-success';
+}
+
+export interface PivotPlanNodeCompensationStrategy {
+  order?: 'forward' | 'reverse';
+  stopOnFailure?: boolean;
 }
 
 export interface PivotPlanNodeRetry {

@@ -459,16 +459,26 @@ const plan = createPlan({
       id: 'create-organization',
       capability: 'organization.create',
       params: { name: 'Branch C', parentId: 'group' },
-      compensate: {
-        capability: 'organization.delete',
-        params: { id: 'created-organization-id' }
+      compensate: [
+        {
+          capability: 'organization.delete',
+          params: { id: 'created-organization-id' }
+        },
+        {
+          capability: 'organization.rollback.note',
+          params: { note: 'branch-c-rollback' }
+        }
+      ],
+      compensation: {
+        order: 'forward',
+        stopOnFailure: true
       }
     }
   ]
 });
 ```
 
-When a later node fails, PIVOT runs configured compensations in reverse order for successful nodes.
+When a later node fails, PIVOT runs configured compensations for previously successful nodes. Each node can define multiple compensation steps, and the node-level compensation strategy controls step order and whether execution stops after a failure. The default order is reverse, so cleanup can unwind a flow in the opposite order it executed.
 
 ## Node Result References
 

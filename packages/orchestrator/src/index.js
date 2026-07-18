@@ -327,7 +327,7 @@ function validateNodeContracts(node, errors) {
     ['retry', node.retry],
     ['timeout', node.timeout],
     ['approval', node.approval],
-    ['compensate', node.compensate],
+    ['compensation', node.compensation],
     ['metadata', node.metadata]
   ];
 
@@ -335,6 +335,108 @@ function validateNodeContracts(node, errors) {
     if (value !== undefined && !isPlainObject(value)) {
       errors.push(`Plan node ${field} must be a plain object.`);
     }
+  }
+
+  if (node.compensate !== undefined) {
+    validateCompensationConfig(node.compensate, errors);
+  }
+
+  if (node.compensation !== undefined) {
+    validateCompensationStrategy(node.compensation, errors);
+  }
+}
+
+function validateCompensationConfig(value, errors) {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      errors.push('Plan node compensate must not be an empty array.');
+      return;
+    }
+
+    for (const [index, entry] of value.entries()) {
+      validateCompensationStep(entry, index, errors);
+    }
+
+    return;
+  }
+
+  if (!isPlainObject(value)) {
+    errors.push('Plan node compensate must be a plain object or an array of plain objects.');
+    return;
+  }
+
+  validateCompensationStep(value, 0, errors);
+}
+
+function validateCompensationStep(step, index, errors) {
+  if (!isPlainObject(step)) {
+    errors.push(`Plan node compensation step must be a plain object at index ${index}.`);
+    return;
+  }
+
+  const allowedFields = new Set(['capability', 'command', 'intent', 'risk', 'params', 'metadata', 'when']);
+  const hasCapability = Object.hasOwn(step, 'capability');
+  const hasCommand = Object.hasOwn(step, 'command');
+
+  for (const field of Object.keys(step)) {
+    if (!allowedFields.has(field)) {
+      errors.push(`Unknown plan node compensation field: ${field}`);
+    }
+  }
+
+  if (!hasCapability && !hasCommand) {
+    errors.push(`Plan node compensation step must include capability or command at index ${index}.`);
+  }
+
+  if (hasCapability && (typeof step.capability !== 'string' || step.capability.trim() === '')) {
+    errors.push(`Plan node compensation capability must be a non-empty string at index ${index}.`);
+  }
+
+  if (hasCommand && !isPlainObject(step.command)) {
+    errors.push(`Plan node compensation command must be a plain object at index ${index}.`);
+  }
+
+  if (step.intent !== undefined && typeof step.intent !== 'string') {
+    errors.push(`Plan node compensation intent must be a string at index ${index}.`);
+  }
+
+  if (step.risk !== undefined && typeof step.risk !== 'string') {
+    errors.push(`Plan node compensation risk must be a string at index ${index}.`);
+  }
+
+  if (step.params !== undefined && !isPlainObject(step.params)) {
+    errors.push(`Plan node compensation params must be a plain object at index ${index}.`);
+  }
+
+  if (step.metadata !== undefined && !isPlainObject(step.metadata)) {
+    errors.push(`Plan node compensation metadata must be a plain object at index ${index}.`);
+  }
+
+  if (step.when !== undefined && !['always', 'on-failure', 'on-success'].includes(step.when)) {
+    errors.push(`Plan node compensation when must be always, on-failure, or on-success at index ${index}.`);
+  }
+}
+
+function validateCompensationStrategy(strategy, errors) {
+  if (!isPlainObject(strategy)) {
+    errors.push('Plan node compensation strategy must be a plain object.');
+    return;
+  }
+
+  const allowedFields = new Set(['order', 'stopOnFailure']);
+
+  for (const field of Object.keys(strategy)) {
+    if (!allowedFields.has(field)) {
+      errors.push(`Unknown plan node compensation strategy field: ${field}`);
+    }
+  }
+
+  if (strategy.order !== undefined && !['forward', 'reverse'].includes(strategy.order)) {
+    errors.push('Plan node compensation strategy order must be forward or reverse.');
+  }
+
+  if (strategy.stopOnFailure !== undefined && typeof strategy.stopOnFailure !== 'boolean') {
+    errors.push('Plan node compensation strategy stopOnFailure must be a boolean.');
   }
 }
 

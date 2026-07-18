@@ -103,7 +103,7 @@ Plans may also include approval nodes. Approval nodes are explicit workflow gate
 
 ## Compensation
 
-Plan nodes can define a `compensate` capability. When a later node fails and `compensateOnError` is enabled, PIVOT runs compensation commands for previously successful nodes in reverse execution order.
+Plan nodes can define one or more `compensate` steps plus a node-level `compensation` strategy. When a later node fails and `compensateOnError` is enabled, PIVOT runs compensation commands for previously successful nodes in reverse execution order by default. Projects can switch the compensation step order to forward and decide whether a failed compensation step should stop the remaining steps.
 
 Compensation is not a database transaction. It is a business-level recovery hook. Each compensation command still goes through validation, policy checks, confirmation, execution, result wrapping, and audit events.
 
