@@ -52,6 +52,28 @@ const rejectionRuntime = createPivotRuntime({
   }
 });
 
+const auditNotifications = [];
+const auditRuntime = createPivotRuntime({
+  policies: [createPermissionPolicy()],
+  ui: {
+    confirm: async () => true
+  },
+  onAudit: async (event) => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    auditNotifications.push({ sink: 'onAudit', event });
+  },
+  auditSinks: [
+    async (event) => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      auditNotifications.push({ sink: 'auditSinkA', event });
+    },
+    async (event) => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      auditNotifications.push({ sink: 'auditSinkB', event });
+    }
+  ]
+});
+
 const isolatedRegistry = createCapabilityRegistry();
 const mutableCapabilityInput = {
   name: 'user.immutable.create',
@@ -339,6 +361,19 @@ rejectionRuntime.registerCapability({
   execute: async ({ params }) => ({ id: 'finalized-1', ...params })
 });
 
+auditRuntime.registerCapability({
+  name: 'organization.audit.create',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:create'],
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  execute: async ({ params }) => ({ id: 'audit-branch', ...params })
+});
+
 runtime.registerCapability({
   name: 'organization.parallel.alpha',
   resource: 'organization',
@@ -517,6 +552,40 @@ if (!passwordResult.ok || passwordResult.data.storedPassword !== 'secret-passwor
 
 if (lastConfirmInput.command.params.password !== '[redacted]' || lastConfirmInput.command.params.token !== '[redacted]') {
   throw new Error('Expected confirmation input command params to be redacted.');
+}
+
+const auditCommand = createCommand({
+  intent: 'Create an auditable organization branch.',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  capability: 'organization.audit.create',
+  risk: RiskLevel.LOW,
+  params: { name: 'Audit Branch', parentId: 'group' }
+});
+
+const auditResult = await auditRuntime.executeCommand(auditCommand, {
+  actor: { id: 'audit-user', permissions: ['organization:create'] },
+  auditMetadata: { requestId: 'req-123', token: 'audit-token' }
+});
+
+if (!auditResult.ok) {
+  throw new Error('Expected auditable command execution to succeed.');
+}
+
+if (auditNotifications.length !== 3) {
+  throw new Error('Expected all audit sinks to receive the audit event.');
+}
+
+if (!auditNotifications.every((entry) => entry.event.metadata.requestId === 'req-123')) {
+  throw new Error('Expected audit metadata to be merged into all audit sinks.');
+}
+
+if (!auditNotifications.every((entry) => entry.event.metadata.token === '[redacted]')) {
+  throw new Error('Expected sensitive audit metadata to be redacted.');
+}
+
+if (auditRuntime.getAuditEvents()[0].metadata.token !== '[redacted]') {
+  throw new Error('Expected stored audit events to keep redacted metadata.');
 }
 
 const backendForbiddenCommand = createCommand({

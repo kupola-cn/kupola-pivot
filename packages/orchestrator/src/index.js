@@ -305,6 +305,7 @@ function validateEdgeCondition(condition, errors) {
 
 function validateNodeContracts(node, errors) {
   const fields = [
+    ['command', node.command],
     ['input', node.input],
     ['params', node.params],
     ['inputSchema', node.inputSchema],

@@ -51,6 +51,8 @@ export function createCapabilityRegistry(options?: {
   onDuplicate?: 'replace' | 'error';
 }): CapabilityRegistry;
 
+export type PivotAuditSink = (event: PivotAuditEvent) => void | Promise<void>;
+
 export interface PivotRuntime {
   registry: CapabilityRegistry;
   ui: TrustedUIAdapter;
@@ -114,5 +116,6 @@ export function createPivotRuntime(options?: {
   policyPipeline?: { evaluate(input: unknown): Promise<unknown> };
   planLimits?: PivotPlanValidationOptions;
   ui?: Partial<TrustedUIAdapter>;
-  onAudit?: (event: PivotAuditEvent) => void;
+  onAudit?: (event: PivotAuditEvent) => void | Promise<void>;
+  auditSinks?: PivotAuditSink[];
 }): PivotRuntime;

@@ -120,6 +120,7 @@ export interface PivotCapabilityManifest extends PivotCapability {
 export interface PivotExecutionContext {
   actor?: unknown;
   permissions?: string[];
+  auditMetadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 

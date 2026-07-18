@@ -122,3 +122,7 @@ Every meaningful execution should be auditable:
 - result summary
 - error or rejection reason
 - timestamp and actor metadata
+
+Projects can attach audit metadata such as request IDs or trace IDs through `context.auditMetadata`, and can forward audit events to one or more sinks with `createPivotRuntime({ onAudit, auditSinks })`.
+
+PIVOT redacts common sensitive metadata keys such as `password`, `token`, `secret`, `apiKey`, and `authorization` before persisting or forwarding audit events. Keep audit metadata minimal: IDs, summaries, and trace references are preferred. Avoid copying raw prompts, raw AI output, access tokens, or other secrets into audit metadata.

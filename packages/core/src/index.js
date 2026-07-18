@@ -44,12 +44,22 @@ export function createPivotRuntime(options = {}) {
   const policyPipeline = options.policyPipeline ?? createPolicyPipeline(options.policies);
   const ui = createTrustedUIAdapter(options.ui);
   const planLimits = normalizePlanLimits(options.planLimits);
+  const auditSinks = normalizeAuditSinks(options.auditSinks, options.onAudit);
   const auditEvents = [];
 
-  const emitAudit = (eventInput) => {
-    const event = createAuditEvent(eventInput);
+  const emitAudit = async (eventInput, auditContext = {}) => {
+    const event = createAuditEvent({
+      ...eventInput,
+      metadata: sanitizeAuditMetadata(
+        mergeAuditMetadata(eventInput.metadata, auditContext.auditMetadata),
+        DEFAULT_AUDIT_SENSITIVE_NAMES
+      )
+    });
+
     auditEvents.push(event);
-    options.onAudit?.(event);
+
+    await Promise.allSettled(auditSinks.map((sink) => Promise.resolve().then(() => sink(event))));
+
     return event;
   };
 
@@ -119,7 +129,7 @@ export function createPivotRuntime(options = {}) {
         warnings: validation.warnings
       }));
 
-      const audit = emitAudit({
+      const audit = await emitAudit({
         actor: context.actor,
         intent: command?.intent,
         commandId: command?.id,
@@ -127,7 +137,7 @@ export function createPivotRuntime(options = {}) {
         decision: PolicyDecision.DENY,
         status: CommandStatus.REJECTED,
         reason: validation.errors.join('; ')
-      });
+      }, context);
 
       return createResult({
         ok: false,
@@ -147,7 +157,7 @@ export function createPivotRuntime(options = {}) {
     }));
 
     if (policyDecision.decision === PolicyDecision.DENY || policyDecision.decision === PolicyDecision.ESCALATE) {
-      const audit = emitAudit({
+      const audit = await emitAudit({
         actor: context.actor,
         intent: command.intent,
         commandId: command.id,
@@ -155,7 +165,7 @@ export function createPivotRuntime(options = {}) {
         decision: policyDecision.decision,
         status: CommandStatus.BLOCKED,
         reason: policyDecision.reason
-      });
+      }, context);
 
       return createResult({
         ok: false,
@@ -175,7 +185,7 @@ export function createPivotRuntime(options = {}) {
     if (!confirmation) {
       timeline.push(createTimelineStep('confirmation', 'rejected', 'User rejected command confirmation.'));
 
-      const audit = emitAudit({
+      const audit = await emitAudit({
         actor: context.actor,
         intent: command.intent,
         commandId: command.id,
@@ -183,7 +193,7 @@ export function createPivotRuntime(options = {}) {
         decision: PolicyDecision.CONFIRM,
         status: CommandStatus.REJECTED,
         reason: 'User rejected command confirmation.'
-      });
+      }, context);
 
       return createResult({
         ok: false,
@@ -200,7 +210,7 @@ export function createPivotRuntime(options = {}) {
     if (typeof capability.execute !== 'function') {
       timeline.push(createTimelineStep('execution', 'failed', 'Capability has no execute function.'));
 
-      const audit = emitAudit({
+      const audit = await emitAudit({
         actor: context.actor,
         intent: command.intent,
         commandId: command.id,
@@ -208,7 +218,7 @@ export function createPivotRuntime(options = {}) {
         decision: policyDecision.decision,
         status: CommandStatus.FAILED,
         reason: 'Capability has no execute function.'
-      });
+      }, context);
 
       return createResult({
         ok: false,
@@ -236,7 +246,7 @@ export function createPivotRuntime(options = {}) {
           maxAttempts
         }));
 
-        const audit = emitAudit({
+        const audit = await emitAudit({
           actor: context.actor,
           intent: command.intent,
           commandId: command.id,
@@ -244,7 +254,7 @@ export function createPivotRuntime(options = {}) {
           decision: policyDecision.decision,
           status: CommandStatus.EXECUTED,
           reason: message
-        });
+        }, context);
 
         return createResult({
           ok: true,
@@ -283,7 +293,7 @@ export function createPivotRuntime(options = {}) {
           continue;
         }
 
-        const audit = emitAudit({
+        const audit = await emitAudit({
           actor: context.actor,
           intent: command.intent,
           commandId: command.id,
@@ -292,7 +302,7 @@ export function createPivotRuntime(options = {}) {
           status: failure.commandStatus,
           reason: failure.reason,
           metadata: failure.httpStatus ? { httpStatus: failure.httpStatus } : {}
-        });
+        }, context);
 
         return createResult({
           ok: false,
@@ -308,7 +318,7 @@ export function createPivotRuntime(options = {}) {
       }
     }
 
-    const audit = emitAudit({
+    const audit = await emitAudit({
       actor: context.actor,
       intent: command.intent,
       commandId: command.id,
@@ -316,7 +326,7 @@ export function createPivotRuntime(options = {}) {
       decision: lastFailure?.decision ?? policyDecision.decision,
       status: lastFailure?.commandStatus ?? CommandStatus.FAILED,
       reason: lastFailure?.reason ?? 'Command execution failed.'
-    });
+    }, context);
 
     return createResult({
       ok: false,
@@ -865,7 +875,7 @@ async function executeApprovalNode({ plan, node, context, timeline, ui, emitAudi
       nodeId: node.id
     }));
 
-    const audit = emitAudit({
+    const audit = await emitAudit({
       actor: context.actor,
       intent: node.intent ?? plan.intent,
       commandId: '',
@@ -878,7 +888,7 @@ async function executeApprovalNode({ plan, node, context, timeline, ui, emitAudi
         nodeId: node.id,
         approval: true
       }
-    });
+    }, context);
 
     return createResult({
       ok: false,
@@ -900,7 +910,7 @@ async function executeApprovalNode({ plan, node, context, timeline, ui, emitAudi
     nodeId: node.id
   }));
 
-  const audit = emitAudit({
+  const audit = await emitAudit({
     actor: context.actor,
     intent: node.intent ?? plan.intent,
     commandId: '',
@@ -913,7 +923,7 @@ async function executeApprovalNode({ plan, node, context, timeline, ui, emitAudi
       nodeId: node.id,
       approval: true
     }
-  });
+  }, context);
 
   return createResult({
     ok: true,
@@ -1238,6 +1248,60 @@ function getErrorStatus(error) {
   return Number.isInteger(numericStatus) ? numericStatus : null;
 }
 
+function normalizeAuditSinks(auditSinks = [], onAudit) {
+  const sinks = [];
+
+  if (typeof onAudit === 'function') {
+    sinks.push(onAudit);
+  }
+
+  if (Array.isArray(auditSinks)) {
+    for (const sink of auditSinks) {
+      if (typeof sink === 'function') {
+        sinks.push(sink);
+      }
+    }
+  }
+
+  return sinks;
+}
+
+function mergeAuditMetadata(...values) {
+  const merged = {};
+
+  for (const value of values) {
+    if (isPlainObject(value)) {
+      Object.assign(merged, value);
+    }
+  }
+
+  return merged;
+}
+
+function sanitizeAuditMetadata(value, sensitiveNames) {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeAuditMetadata(item, sensitiveNames));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [
+        key,
+        isSensitiveAuditField(key, sensitiveNames)
+          ? '[redacted]'
+          : sanitizeAuditMetadata(entryValue, sensitiveNames)
+      ])
+    );
+  }
+
+  return value;
+}
+
+function isSensitiveAuditField(field, sensitiveNames) {
+  const normalized = String(field).toLowerCase();
+  return sensitiveNames.some((name) => normalized === String(name).toLowerCase());
+}
+
 function normalizeExecutionOptions(options = {}) {
   const value = options ?? {};
   return {
@@ -1373,3 +1437,18 @@ function createTimelineStep(stage, status, message, metadata = {}) {
     metadata
   };
 }
+
+const DEFAULT_AUDIT_SENSITIVE_NAMES = [
+  'password',
+  'passwd',
+  'pwd',
+  'token',
+  'accessToken',
+  'refreshToken',
+  'secret',
+  'apiKey',
+  'apikey',
+  'authorization',
+  'credential',
+  'credentials'
+];
