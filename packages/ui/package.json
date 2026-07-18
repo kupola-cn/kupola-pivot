@@ -1,6 +1,6 @@
 {
   "name": "@kupola/pivot-ui",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Kupola-based trusted UI adapter contracts for PIVOT.",
   "type": "module",
   "main": "src/index.js",

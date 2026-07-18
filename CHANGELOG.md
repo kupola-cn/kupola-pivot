@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.9 - Conditional Plan Edges
+
+### Added
+
+- Declarative plan edge conditions for `success`, `failure`, `skipped`, and object conditions.
+- `evaluatePlanEdgeCondition()` orchestrator helper.
+- Runtime plan execution skips nodes when conditional incoming edges do not match.
+- Smoke coverage for executed and skipped conditional branches.
+
 ## 0.2.8 - Capability Manifests
 
 ### Added

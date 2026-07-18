@@ -268,6 +268,59 @@ const result = await runtime.executePlan(plan, context);
 
 Each node is converted into a command and executed through the same validation, policy, confirmation, execution, and audit path as `executeCommand`.
 
+## Conditional Plan Edges
+
+Plan edges can include declarative conditions. PIVOT does not run arbitrary JavaScript expressions from plans.
+
+```js
+const plan = createPlan({
+  nodes: [
+    { id: 'classify', capability: 'organization.classify' },
+    {
+      id: 'create-branch',
+      capability: 'organization.create',
+      params: { name: 'Branch C', parentId: 'group' }
+    },
+    {
+      id: 'create-department',
+      capability: 'organization.create',
+      params: { name: 'Department C', parentId: 'group' }
+    }
+  ],
+  edges: [
+    {
+      from: 'classify',
+      to: 'create-branch',
+      condition: { path: 'data.kind', equals: 'branch' }
+    },
+    {
+      from: 'classify',
+      to: 'create-department',
+      condition: { path: 'data.kind', equals: 'department' }
+    }
+  ]
+});
+```
+
+Supported string conditions:
+
+- `always`
+- `success`
+- `failure`
+- `skipped`
+
+Supported object condition fields:
+
+- `ok: boolean`
+- `skipped: boolean`
+- `path: string`
+- `exists: boolean`
+- `equals: unknown`
+- `notEquals: unknown`
+- `in: unknown[]`
+
+During `executePlan`, a node with conditional incoming edges runs only when at least one conditional incoming edge matches. Otherwise the node result is marked as skipped and its capability is not executed. `previewPlan` validates condition shape, but it does not evaluate result-dependent conditions because capability execution has not happened yet.
+
 Nodes can also define compensation:
 
 ```js

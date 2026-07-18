@@ -80,6 +80,8 @@ export function validatePlan(plan, options = {}) {
     if (!nodeIds.has(edge.to)) {
       errors.push(`Plan edge references unknown to node: ${edge.to}`);
     }
+
+    validateEdgeCondition(edge.condition, errors);
   }
 
   if (errors.length === 0 && hasCycle(plan)) {
@@ -126,6 +128,62 @@ export function getExecutionOrder(plan) {
   }
 
   return ordered;
+}
+
+export function evaluatePlanEdgeCondition(edge, sourceResult) {
+  const condition = edge?.condition;
+
+  if (condition === undefined || condition === null || condition === '' || condition === 'always') {
+    return true;
+  }
+
+  if (condition === 'success') {
+    return Boolean(sourceResult?.ok);
+  }
+
+  if (condition === 'failure') {
+    return sourceResult?.ok === false;
+  }
+
+  if (condition === 'skipped') {
+    return Boolean(sourceResult?.data?.skipped);
+  }
+
+  if (!isPlainObject(condition)) {
+    return false;
+  }
+
+  if (typeof condition.ok === 'boolean' && sourceResult?.ok !== condition.ok) {
+    return false;
+  }
+
+  if (typeof condition.skipped === 'boolean' && Boolean(sourceResult?.data?.skipped) !== condition.skipped) {
+    return false;
+  }
+
+  if (typeof condition.path !== 'string' || condition.path.trim() === '') {
+    return true;
+  }
+
+  const pathResult = getPath(sourceResult, condition.path);
+
+  if (typeof condition.exists === 'boolean' && pathResult.found !== condition.exists) {
+    return false;
+  }
+
+  if (Object.hasOwn(condition, 'equals') && pathResult.value !== condition.equals) {
+    return false;
+  }
+
+  if (Object.hasOwn(condition, 'notEquals') && pathResult.value === condition.notEquals) {
+    return false;
+  }
+
+  if (Array.isArray(condition.in) && !condition.in.includes(pathResult.value)) {
+    return false;
+  }
+
+  return true;
 }
 
 function hasCycle(plan) {
@@ -179,4 +237,72 @@ function isPlainObject(value) {
 
 function normalizeLimit(limit) {
   return Number.isInteger(limit) && limit >= 0 ? limit : null;
+}
+
+function validateEdgeCondition(condition, errors) {
+  if (condition === undefined || condition === null || condition === '') {
+    return;
+  }
+
+  if (typeof condition === 'string') {
+    if (!['always', 'success', 'failure', 'skipped'].includes(condition)) {
+      errors.push(`Unknown plan edge condition: ${condition}`);
+    }
+
+    return;
+  }
+
+  if (!isPlainObject(condition)) {
+    errors.push('Plan edge condition must be a string or plain object.');
+    return;
+  }
+
+  const allowedFields = new Set(['ok', 'skipped', 'path', 'exists', 'equals', 'notEquals', 'in']);
+  const operatorFields = ['ok', 'skipped', 'exists', 'equals', 'notEquals', 'in'];
+  const hasOperator = operatorFields.some((field) => Object.hasOwn(condition, field));
+
+  for (const field of Object.keys(condition)) {
+    if (!allowedFields.has(field)) {
+      errors.push(`Unknown plan edge condition field: ${field}`);
+    }
+  }
+
+  if (!hasOperator) {
+    errors.push('Plan edge condition must include at least one operator.');
+  }
+
+  if (condition.ok !== undefined && typeof condition.ok !== 'boolean') {
+    errors.push('Plan edge condition ok must be a boolean.');
+  }
+
+  if (condition.skipped !== undefined && typeof condition.skipped !== 'boolean') {
+    errors.push('Plan edge condition skipped must be a boolean.');
+  }
+
+  if (condition.path !== undefined && (typeof condition.path !== 'string' || condition.path.trim() === '')) {
+    errors.push('Plan edge condition path must be a non-empty string.');
+  }
+
+  if (condition.exists !== undefined && typeof condition.exists !== 'boolean') {
+    errors.push('Plan edge condition exists must be a boolean.');
+  }
+
+  if (condition.in !== undefined && !Array.isArray(condition.in)) {
+    errors.push('Plan edge condition in must be an array.');
+  }
+}
+
+function getPath(value, path) {
+  const segments = path.split('.').filter(Boolean);
+  let current = value;
+
+  for (const segment of segments) {
+    if (current === null || current === undefined || !Object.hasOwn(Object(current), segment)) {
+      return { found: false, value: undefined };
+    }
+
+    current = current[segment];
+  }
+
+  return { found: true, value: current };
 }

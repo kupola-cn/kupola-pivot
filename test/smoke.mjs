@@ -234,6 +234,16 @@ runtime.registerCapability({
   }
 });
 
+runtime.registerCapability({
+  name: 'organization.classify',
+  resource: 'organization',
+  action: ActionType.QUERY,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:query'],
+  paramsSchema: {},
+  execute: async () => ({ kind: 'branch' })
+});
+
 const command = createCommand({
   intent: 'Create Branch C under the group.',
   resource: 'organization',
@@ -483,8 +493,49 @@ const brokenReferencePlan = createPlan({
   edges: []
 });
 
+const conditionalPlan = createPlan({
+  intent: 'Create the matching organization branch from a classified result.',
+  nodes: [
+    { id: 'classify-organization', capability: 'organization.classify' },
+    {
+      id: 'create-branch-condition',
+      capability: 'organization.create',
+      params: { name: 'Branch I', parentId: 'group' }
+    },
+    {
+      id: 'create-department-condition',
+      capability: 'organization.create',
+      params: { name: 'Department I', parentId: 'group' }
+    }
+  ],
+  edges: [
+    {
+      from: 'classify-organization',
+      to: 'create-branch-condition',
+      condition: { path: 'data.kind', equals: 'branch' }
+    },
+    {
+      from: 'classify-organization',
+      to: 'create-department-condition',
+      condition: { path: 'data.kind', equals: 'department' }
+    }
+  ]
+});
+
+const invalidConditionalPlan = createPlan({
+  intent: 'Reject an unsafe condition expression.',
+  nodes: [
+    { id: 'classify-unsafe', capability: 'organization.classify' },
+    { id: 'create-unsafe', capability: 'organization.create' }
+  ],
+  edges: [
+    { from: 'classify-unsafe', to: 'create-unsafe', condition: 'data.kind === "branch"' }
+  ]
+});
+
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
+const invalidConditionalPlanValidation = validatePlan(invalidConditionalPlan);
 const order = getExecutionOrder(plan);
 const planPreview = await runtime.previewPlan(plan, {
   actor: {
@@ -520,6 +571,12 @@ const brokenReferenceResult = await runtime.executePlan(brokenReferencePlan, {
   actor: {
     id: 'user-1',
     permissions: ['organization:create']
+  }
+});
+const conditionalPlanResult = await runtime.executePlan(conditionalPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
   }
 });
 
@@ -561,6 +618,10 @@ if (limitedPlanValidation.valid || !limitedPlanValidation.errors.some((error) =>
   throw new Error('Expected plan validation limits to reject oversized plans.');
 }
 
+if (invalidConditionalPlanValidation.valid || !invalidConditionalPlanValidation.errors.some((error) => error.includes('Unknown plan edge condition'))) {
+  throw new Error('Expected plan validation to reject unknown plan edge condition strings.');
+}
+
 if (!planPreview.ok || !planPreview.data.requiresConfirmation || planPreview.data.status !== 'ready') {
   throw new Error('Expected plan preview to be ready and require confirmation.');
 }
@@ -591,6 +652,26 @@ if (!referencedPlanResult.ok || referencedPlanResult.data.nodes[1].result.data.p
 
 if (brokenReferenceResult.ok || !brokenReferenceResult.data.nodes[0].result.message.includes('params could not be resolved')) {
   throw new Error('Expected plan execution to fail when a param reference cannot be resolved.');
+}
+
+if (!conditionalPlanResult.ok || conditionalPlanResult.data.nodes.length !== 3) {
+  throw new Error('Expected conditional plan execution to finish with executed and skipped branches.');
+}
+
+if (!conditionalPlanResult.data.nodes.find((item) => item.node.id === 'create-branch-condition')?.result.ok) {
+  throw new Error('Expected matching conditional branch to execute.');
+}
+
+if (!conditionalPlanResult.data.nodes.find((item) => item.node.id === 'create-department-condition')?.result.data?.skipped) {
+  throw new Error('Expected non-matching conditional branch to be skipped.');
+}
+
+if (conditionalPlanResult.explain.skippedNodes !== 1 || conditionalPlanResult.explain.executedNodes !== 2) {
+  throw new Error('Expected conditional plan explain counts to distinguish executed and skipped nodes.');
+}
+
+if (!conditionalPlanResult.explain.timeline.some((step) => step.stage === 'plan.node' && step.status === 'skipped')) {
+  throw new Error('Expected conditional plan timeline to include skipped node steps.');
 }
 
 if (!planResult.ok || planResult.data.nodes.length !== 2) {

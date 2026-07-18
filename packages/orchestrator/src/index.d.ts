@@ -21,9 +21,24 @@ export interface PivotPlanNode {
 export interface PivotPlanEdge {
   from: string;
   to: string;
-  condition?: string;
+  condition?: PivotPlanEdgeCondition;
   metadata?: Record<string, unknown>;
 }
+
+export type PivotPlanEdgeCondition =
+  | 'always'
+  | 'success'
+  | 'failure'
+  | 'skipped'
+  | {
+      ok?: boolean;
+      skipped?: boolean;
+      path?: string;
+      exists?: boolean;
+      equals?: unknown;
+      notEquals?: unknown;
+      in?: unknown[];
+    };
 
 export interface PivotPlan {
   id: string;
@@ -49,3 +64,4 @@ export function addNode(plan: PivotPlan, node: PivotPlanNode): PivotPlan;
 export function addEdge(plan: PivotPlan, edge: PivotPlanEdge): PivotPlan;
 export function validatePlan(plan: unknown, options?: PivotPlanValidationOptions): PivotPlanValidationResult;
 export function getExecutionOrder(plan: PivotPlan): PivotPlanNode[];
+export function evaluatePlanEdgeCondition(edge: PivotPlanEdge, sourceResult: unknown): boolean;

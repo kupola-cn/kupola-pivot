@@ -29,13 +29,13 @@ export {
   escalate,
   mapHttpStatusToPolicy
 } from '@kupola/pivot-policy';
-export { addEdge, addNode, createPlan, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
+export { addEdge, addNode, createPlan, evaluatePlanEdgeCondition, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 export { createTrustedUIAdapter, mountResult, mountTimeline, renderResultToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
 import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, redactParams } from '@kupola/pivot-protocol';
 import { PolicyDecision, confirm, createPolicyPipeline } from '@kupola/pivot-policy';
-import { getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
+import { evaluatePlanEdgeCondition, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 import { createCapabilityRegistry } from './capability-registry.js';
 import { createTrustedUIAdapter } from '@kupola/pivot-ui';
 
@@ -393,12 +393,30 @@ export function createPivotRuntime(options = {}) {
     const orderedNodes = getExecutionOrder(plan);
     const nodeResults = [];
     const resultsByNodeId = {};
+    const incomingEdgesByNodeId = groupIncomingEdges(plan);
     timeline.push(createTimelineStep('plan.validation', 'passed', 'Plan validation passed.', {
       warnings: validation.warnings,
       nodes: orderedNodes.length
     }));
 
     for (const node of orderedNodes) {
+      const runState = getPlanNodeRunState(node, incomingEdgesByNodeId, resultsByNodeId);
+
+      if (!runState.run) {
+        const result = createSkippedPlanNodeResult(node, runState.reason, runState);
+
+        nodeResults.push({ node, command: null, result });
+        resultsByNodeId[node.id] = result;
+        timeline.push(createTimelineStep('plan.node', 'skipped', `Plan node skipped: ${node.id}`, {
+          nodeId: node.id,
+          capability: node.capability,
+          reason: runState.reason,
+          activeIncomingEdges: runState.activeIncomingEdges,
+          conditionalIncomingEdges: runState.conditionalIncomingEdges
+        }));
+        continue;
+      }
+
       timeline.push(createTimelineStep('plan.node', 'started', `Plan node started: ${node.id}`, {
         nodeId: node.id,
         capability: node.capability
@@ -500,7 +518,7 @@ export function createPivotRuntime(options = {}) {
 
   const compensatePlan = async ({ plan, nodeResults, context, resultsByNodeId, failedNode }) => {
     const compensations = [];
-    const successfulNodes = nodeResults.filter((item) => item.result.ok).reverse();
+    const successfulNodes = nodeResults.filter((item) => item.result.ok && !item.result.data?.skipped).reverse();
 
     for (const item of successfulNodes) {
       const compensation = item.node.compensate;
@@ -619,6 +637,97 @@ function redactCommand(command, capability) {
     ...command,
     params: redactParams(command.params, capability.paramsSchema)
   };
+}
+
+function groupIncomingEdges(plan) {
+  const incoming = new Map(plan.nodes.map((node) => [node.id, []]));
+
+  for (const edge of plan.edges) {
+    incoming.get(edge.to)?.push(edge);
+  }
+
+  return incoming;
+}
+
+function getPlanNodeRunState(node, incomingEdgesByNodeId, resultsByNodeId) {
+  const incomingEdges = incomingEdgesByNodeId.get(node.id) ?? [];
+
+  if (incomingEdges.length === 0) {
+    return {
+      run: true,
+      reason: 'Plan node has no incoming dependencies.',
+      activeIncomingEdges: 0,
+      conditionalIncomingEdges: 0
+    };
+  }
+
+  const conditionalEdges = incomingEdges.filter((edge) => edge.condition !== undefined && edge.condition !== null && edge.condition !== '');
+  let activeConditionalEdges = 0;
+
+  for (const edge of incomingEdges) {
+    const sourceResult = resultsByNodeId[edge.from];
+
+    if (!sourceResult) {
+      return {
+        run: false,
+        reason: `Plan node dependency has not executed: ${edge.from}`,
+        activeIncomingEdges: activeConditionalEdges,
+        conditionalIncomingEdges: conditionalEdges.length
+      };
+    }
+
+    if (edge.condition === undefined || edge.condition === null || edge.condition === '') {
+      if (!sourceResult.ok || sourceResult.data?.skipped) {
+        return {
+          run: false,
+          reason: `Plan node dependency was not successful: ${edge.from}`,
+          activeIncomingEdges: activeConditionalEdges,
+          conditionalIncomingEdges: conditionalEdges.length
+        };
+      }
+
+      continue;
+    }
+
+    if (evaluatePlanEdgeCondition(edge, sourceResult)) {
+      activeConditionalEdges += 1;
+    }
+  }
+
+  if (conditionalEdges.length > 0 && activeConditionalEdges === 0) {
+    return {
+      run: false,
+      reason: 'No conditional incoming edge matched.',
+      activeIncomingEdges: activeConditionalEdges,
+      conditionalIncomingEdges: conditionalEdges.length
+    };
+  }
+
+  return {
+    run: true,
+    reason: 'Plan node dependencies are active.',
+    activeIncomingEdges: activeConditionalEdges,
+    conditionalIncomingEdges: conditionalEdges.length
+  };
+}
+
+function createSkippedPlanNodeResult(node, reason, runState) {
+  return createResult({
+    ok: true,
+    data: {
+      skipped: true,
+      reason
+    },
+    message: 'Plan node skipped.',
+    explain: {
+      nodeId: node.id,
+      capability: node.capability,
+      skipped: true,
+      reason,
+      activeIncomingEdges: runState.activeIncomingEdges,
+      conditionalIncomingEdges: runState.conditionalIncomingEdges
+    }
+  });
 }
 
 function createPlanNodeCommand(plan, node, capability, resultsByNodeId = {}) {
@@ -785,6 +894,8 @@ function normalizeLimit(value, fallback) {
 }
 
 function createPlanResult(plan, nodeResults, ok, message, compensations = [], timeline = []) {
+  const skippedNodes = nodeResults.filter((item) => item.result.data?.skipped).length;
+
   return createResult({
     ok,
     message,
@@ -795,7 +906,8 @@ function createPlanResult(plan, nodeResults, ok, message, compensations = [], ti
       status: ok ? 'executed' : 'failed'
     },
     explain: {
-      executedNodes: nodeResults.length,
+      executedNodes: nodeResults.length - skippedNodes,
+      skippedNodes,
       failedNodes: nodeResults.filter((item) => !item.result.ok).length,
       compensationNodes: compensations.length,
       failedCompensations: compensations.filter((item) => !item.result.ok).length,
