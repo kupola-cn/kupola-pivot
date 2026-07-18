@@ -1,4 +1,5 @@
 export const PIVOT_PROTOCOL_VERSION = '0.1.0';
+export const CAPABILITY_MANIFEST_VERSION = '0.1.0';
 
 export const ActionType = Object.freeze({
   QUERY: 'query',
@@ -53,13 +54,17 @@ export function createCommand(input = {}) {
 }
 
 export function createCapability(input = {}) {
+  const paramsSchema = input.paramsSchema ?? input.inputSchema ?? {};
+  const inputSchema = input.inputSchema ?? paramsSchema;
+
   return {
     name: '',
     resource: '',
     action: '',
     risk: RiskLevel.LOW,
     description: '',
-    paramsSchema: {},
+    paramsSchema,
+    inputSchema,
     allowUnknownParams: false,
     permissions: [],
     requiresConfirmation: false,
@@ -67,6 +72,23 @@ export function createCapability(input = {}) {
     metadata: {},
     ...input
   };
+}
+
+export function createCapabilityManifest(input = {}) {
+  return createCapability({
+    ...input,
+    manifestVersion: input.manifestVersion ?? CAPABILITY_MANIFEST_VERSION,
+    version: input.version ?? '',
+    domain: input.domain ?? '',
+    group: input.group ?? '',
+    tags: input.tags ?? [],
+    dependencies: input.dependencies ?? [],
+    inputSchema: input.inputSchema ?? input.paramsSchema ?? {},
+    outputSchema: input.outputSchema ?? {},
+    examples: input.examples ?? [],
+    paramsSchema: input.paramsSchema ?? input.inputSchema ?? {},
+    metadata: input.metadata ?? {}
+  });
 }
 
 export function createResult(input = {}) {
@@ -247,11 +269,73 @@ export function validateCapability(capability) {
     errors.push('Capability permissions must be an array.');
   }
 
+  if (!isPlainObject(capability.metadata)) {
+    errors.push('Capability metadata must be a plain object.');
+  }
+
+  if (capability.manifestVersion !== undefined && typeof capability.manifestVersion !== 'string') {
+    errors.push('Capability manifestVersion must be a string when provided.');
+  }
+
+  if (capability.version !== undefined && typeof capability.version !== 'string') {
+    errors.push('Capability version must be a string when provided.');
+  }
+
+  if (capability.domain !== undefined && typeof capability.domain !== 'string') {
+    errors.push('Capability domain must be a string when provided.');
+  }
+
+  if (capability.group !== undefined && typeof capability.group !== 'string') {
+    errors.push('Capability group must be a string when provided.');
+  }
+
+  if (capability.tags !== undefined) {
+    validateStringArray(capability.tags, 'Capability tags', errors);
+  }
+
+  if (capability.dependencies !== undefined) {
+    validateCapabilityDependencies(capability.dependencies, errors);
+  }
+
+  if (capability.inputSchema !== undefined && !isPlainObject(capability.inputSchema)) {
+    errors.push('Capability inputSchema must be a plain object when provided.');
+  }
+
+  if (capability.outputSchema !== undefined && !isPlainObject(capability.outputSchema)) {
+    errors.push('Capability outputSchema must be a plain object when provided.');
+  }
+
+  if (capability.examples !== undefined) {
+    validateCapabilityExamples(capability.examples, errors);
+  }
+
   if (capability.execute !== null && capability.execute !== undefined && typeof capability.execute !== 'function') {
     errors.push('Capability execute must be a function when provided.');
   }
 
   return createValidationResult(errors);
+}
+
+export function validateCapabilityManifest(capability) {
+  const validation = validateCapability(capability);
+  const errors = [...validation.errors];
+
+  if (!isPlainObject(capability)) {
+    return createValidationResult(['Capability manifest must be a plain object.']);
+  }
+
+  requireString(capability, 'manifestVersion', errors);
+  requireString(capability, 'version', errors);
+
+  if (!isPlainObject(capability.inputSchema)) {
+    errors.push('Capability manifest inputSchema must be a plain object.');
+  }
+
+  if (!isPlainObject(capability.outputSchema)) {
+    errors.push('Capability manifest outputSchema must be a plain object.');
+  }
+
+  return createValidationResult(errors, validation.warnings);
 }
 
 function normalizeFieldRule(rule) {
@@ -291,6 +375,79 @@ function matchesFieldType(value, rule) {
 function requireString(target, field, errors) {
   if (typeof target[field] !== 'string' || target[field].trim() === '') {
     errors.push(`Command field is required: ${field}`);
+  }
+}
+
+function validateStringArray(value, label, errors) {
+  if (!Array.isArray(value)) {
+    errors.push(`${label} must be an array.`);
+    return;
+  }
+
+  for (const [index, entry] of value.entries()) {
+    if (typeof entry !== 'string' || entry.trim() === '') {
+      errors.push(`${label} must contain non-empty strings. Invalid item at index ${index}.`);
+    }
+  }
+}
+
+function validateCapabilityDependencies(dependencies, errors) {
+  if (!Array.isArray(dependencies)) {
+    errors.push('Capability dependencies must be an array.');
+    return;
+  }
+
+  for (const [index, dependency] of dependencies.entries()) {
+    if (!isPlainObject(dependency)) {
+      errors.push(`Capability dependency must be a plain object at index ${index}.`);
+      continue;
+    }
+
+    if (typeof dependency.capability !== 'string' || dependency.capability.trim() === '') {
+      errors.push(`Capability dependency capability is required at index ${index}.`);
+    }
+
+    if (dependency.version !== undefined && typeof dependency.version !== 'string') {
+      errors.push(`Capability dependency version must be a string at index ${index}.`);
+    }
+
+    if (dependency.optional !== undefined && typeof dependency.optional !== 'boolean') {
+      errors.push(`Capability dependency optional must be a boolean at index ${index}.`);
+    }
+
+    if (dependency.description !== undefined && typeof dependency.description !== 'string') {
+      errors.push(`Capability dependency description must be a string at index ${index}.`);
+    }
+  }
+}
+
+function validateCapabilityExamples(examples, errors) {
+  if (!Array.isArray(examples)) {
+    errors.push('Capability examples must be an array.');
+    return;
+  }
+
+  for (const [index, example] of examples.entries()) {
+    if (!isPlainObject(example)) {
+      errors.push(`Capability example must be a plain object at index ${index}.`);
+      continue;
+    }
+
+    if (example.label !== undefined && typeof example.label !== 'string') {
+      errors.push(`Capability example label must be a string at index ${index}.`);
+    }
+
+    if (example.description !== undefined && typeof example.description !== 'string') {
+      errors.push(`Capability example description must be a string at index ${index}.`);
+    }
+
+    if (example.params !== undefined && !isPlainObject(example.params)) {
+      errors.push(`Capability example params must be a plain object at index ${index}.`);
+    }
+
+    if (example.command !== undefined && !isPlainObject(example.command)) {
+      errors.push(`Capability example command must be a plain object at index ${index}.`);
+    }
   }
 }
 

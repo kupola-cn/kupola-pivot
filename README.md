@@ -123,6 +123,8 @@ if (!result.ok) {
 }
 ```
 
+For larger apps, `createCapabilityManifest()` can add version, domain, group, tags, dependencies, input/output schemas, and example templates while remaining compatible with `registerCapability()`.
+
 Use `previewCommand` when UI needs to show a confirmation or explain why an operation is blocked before execution:
 
 ```js

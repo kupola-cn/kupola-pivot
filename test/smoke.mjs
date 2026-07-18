@@ -3,6 +3,7 @@ import {
   RiskLevel,
   createCommand,
   createCapabilityRegistry,
+  createCapabilityManifest,
   createPlan,
   createPermissionPolicy,
   createPivotRuntime,
@@ -10,6 +11,7 @@ import {
   redactParams,
   renderResultToHTML,
   renderTimelineToHTML,
+  validateCapabilityManifest,
   validateParams,
   validatePlan
 } from '@kupola/pivot';
@@ -66,6 +68,63 @@ if (!mutationBlocked || !Object.isFrozen(immutableCapability.paramsSchema.userna
 
 if (typeof immutableCapability.execute !== 'function') {
   throw new Error('Expected capability execute function to be preserved during deep freeze.');
+}
+
+const manifestRegistry = createCapabilityRegistry();
+const manifestCapability = manifestRegistry.register(createCapabilityManifest({
+  name: 'team.create',
+  manifestVersion: '0.1.0',
+  version: '1.0.0',
+  domain: 'team',
+  group: 'team.lifecycle',
+  tags: ['team', 'create'],
+  dependencies: [
+    {
+      capability: 'organization.query',
+      version: '^1.0.0',
+      optional: false,
+      description: 'Resolve the parent organization before creating a team.'
+    }
+  ],
+  resource: 'team',
+  action: ActionType.CREATE,
+  risk: RiskLevel.MEDIUM,
+  permissions: ['team:create'],
+  inputSchema: {
+    name: { type: 'string', required: true }
+  },
+  outputSchema: {
+    id: { type: 'string' },
+    name: { type: 'string' }
+  },
+  examples: [
+    {
+      label: 'Create team',
+      description: 'Create a new team inside an organization.',
+      params: { name: 'Platform' }
+    }
+  ],
+  execute: async ({ params }) => ({ id: 'team-1', ...params })
+}));
+
+const manifestValidation = validateCapabilityManifest(manifestCapability);
+const manifestTagMatches = manifestRegistry.list({ domain: 'team', tag: 'team' });
+const manifestVersionMatches = manifestRegistry.list({ version: '1.0.0', tags: ['team', 'create'] });
+
+if (!manifestValidation.valid) {
+  throw new Error(`Expected capability manifest validation to succeed, got: ${manifestValidation.errors.join('; ')}`);
+}
+
+if (!manifestCapability.inputSchema.name.required || !manifestCapability.paramsSchema.name.required) {
+  throw new Error('Expected capability manifest inputSchema and paramsSchema to preserve required fields.');
+}
+
+if (manifestCapability.manifestVersion !== '0.1.0' || manifestCapability.domain !== 'team' || manifestCapability.tags.length !== 2) {
+  throw new Error('Expected capability manifest metadata to be preserved.');
+}
+
+if (manifestTagMatches.length !== 1 || manifestVersionMatches.length !== 1) {
+  throw new Error('Expected capability registry filters to support domain, tag, version, and tag arrays.');
 }
 
 runtime.registerCapability({

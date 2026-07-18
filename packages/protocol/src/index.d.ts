@@ -1,4 +1,5 @@
 export const PIVOT_PROTOCOL_VERSION: '0.1.0';
+export const CAPABILITY_MANIFEST_VERSION: '0.1.0';
 
 export const ActionType: Readonly<{
   QUERY: 'query';
@@ -53,6 +54,21 @@ export interface FieldRule {
 
 export type ParamsSchema = Record<string, FieldTypeValue | FieldRule>;
 
+export interface PivotCapabilityDependency {
+  capability: string;
+  version?: string;
+  optional?: boolean;
+  description?: string;
+}
+
+export interface PivotCapabilityExample {
+  label?: string;
+  description?: string;
+  params?: Record<string, unknown>;
+  command?: Partial<PivotCommand>;
+  output?: unknown;
+}
+
 export interface PivotCommand {
   protocolVersion: typeof PIVOT_PROTOCOL_VERSION;
   id: string;
@@ -73,11 +89,32 @@ export interface PivotCapability {
   risk: RiskLevelValue;
   description: string;
   paramsSchema: ParamsSchema;
+  inputSchema?: ParamsSchema;
+  manifestVersion?: string;
+  version?: string;
+  domain?: string;
+  group?: string;
+  tags?: string[];
+  dependencies?: PivotCapabilityDependency[];
+  outputSchema?: Record<string, unknown>;
+  examples?: PivotCapabilityExample[];
   allowUnknownParams: boolean;
   permissions: string[];
   requiresConfirmation: boolean;
   execute?: PivotCapabilityExecutor | null;
   metadata: Record<string, unknown>;
+}
+
+export interface PivotCapabilityManifest extends PivotCapability {
+  manifestVersion: string;
+  version: string;
+  domain: string;
+  group: string;
+  tags: string[];
+  dependencies: PivotCapabilityDependency[];
+  inputSchema: ParamsSchema;
+  outputSchema: Record<string, unknown>;
+  examples: PivotCapabilityExample[];
 }
 
 export interface PivotExecutionContext {
@@ -121,6 +158,7 @@ export interface ValidationResult {
 
 export function createCommand(input?: Partial<PivotCommand>): PivotCommand;
 export function createCapability(input?: Partial<PivotCapability>): PivotCapability;
+export function createCapabilityManifest(input?: Partial<PivotCapabilityManifest>): PivotCapabilityManifest;
 export function createResult<TData = unknown>(input?: Partial<PivotResult<TData>>): PivotResult<TData>;
 export function createAuditEvent(input?: Partial<PivotAuditEvent>): PivotAuditEvent;
 export function createValidationResult(errors?: string[], warnings?: string[]): ValidationResult;
@@ -131,3 +169,4 @@ export function redactParams(params?: Record<string, unknown>, schema?: ParamsSc
   sensitiveNames?: string[];
 }): Record<string, unknown>;
 export function validateCapability(capability: unknown): ValidationResult;
+export function validateCapabilityManifest(capability: unknown): ValidationResult;

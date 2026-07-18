@@ -1,16 +1,19 @@
 export {
   ActionType,
+  CAPABILITY_MANIFEST_VERSION,
   CommandStatus,
   FieldType,
   PIVOT_PROTOCOL_VERSION,
   RiskLevel,
   createCapability,
+  createCapabilityManifest,
   createAuditEvent,
   createCommand,
   createResult,
   createValidationResult,
   redactParams,
   validateCapability,
+  validateCapabilityManifest,
   validateCommand,
   validateParams
 } from '@kupola/pivot-protocol';

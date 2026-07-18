@@ -20,7 +20,16 @@ export interface CapabilityRegistry {
   unregister(name: string): boolean;
   get(name: string): PivotCapability | null;
   has(name: string): boolean;
-  list(filter?: { resource?: string; action?: string; permission?: string }): PivotCapability[];
+  list(filter?: {
+    resource?: string;
+    action?: string;
+    permission?: string;
+    domain?: string;
+    group?: string;
+    version?: string;
+    tag?: string;
+    tags?: string[];
+  }): PivotCapability[];
   validateCommand(command: PivotCommand): ValidationResult;
   size(): number;
 }
@@ -47,7 +56,16 @@ export interface PivotRuntime {
   ui: TrustedUIAdapter;
   registerCapability(capability: Partial<PivotCapability>): PivotCapability;
   getCapability(name: string): PivotCapability | null;
-  listCapabilities(filter?: { resource?: string; action?: string; permission?: string }): PivotCapability[];
+  listCapabilities(filter?: {
+    resource?: string;
+    action?: string;
+    permission?: string;
+    domain?: string;
+    group?: string;
+    version?: string;
+    tag?: string;
+    tags?: string[];
+  }): PivotCapability[];
   validateCommand(command: PivotCommand): ValidationResult;
   previewCommand(command: PivotCommand, context?: PivotExecutionContext): Promise<PivotResult<{
     command: PivotCommand;

@@ -2,6 +2,8 @@
 
 PIVOT does not let AI call arbitrary APIs. A project must register capabilities first. A capability describes what the app can do, what resource it touches, which action it performs, which params are allowed, and which permission hints should be checked before execution.
 
+For larger projects, PIVOT also supports a capability manifest layer with `manifestVersion`, `version`, `domain`, `group`, `tags`, `dependencies`, `inputSchema`, `outputSchema`, and `examples`.
+
 ## Capability Shape
 
 ```js
@@ -11,16 +13,60 @@ runtime.registerCapability({
   action: 'create',
   risk: 'medium',
   description: 'Create an organization node.',
+  manifestVersion: '0.1.0',
+  version: '1.0.0',
+  domain: 'organization',
+  group: 'organization.lifecycle',
+  tags: ['organization', 'create'],
+  dependencies: [
+    {
+      capability: 'organization.query',
+      optional: true,
+      description: 'Resolve the parent node before creation.'
+    }
+  ],
   permissions: ['organization:create'],
   requiresConfirmation: true,
   paramsSchema: {
     name: { type: 'string', required: true },
     parentId: { type: 'string', required: true }
   },
+  inputSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  outputSchema: {
+    id: { type: 'string' },
+    name: { type: 'string' }
+  },
+  examples: [
+    {
+      label: 'Create branch',
+      params: { name: 'Branch C', parentId: 'group' }
+    }
+  ],
   allowUnknownParams: false,
   execute: async ({ params }) => {
     return api.createOrganization(params);
   }
+});
+```
+
+You can also build the manifest explicitly:
+
+```js
+const manifest = createCapabilityManifest({
+  name: 'organization.create',
+  manifestVersion: '0.1.0',
+  version: '1.0.0',
+  resource: 'organization',
+  action: 'create',
+  risk: 'medium',
+  paramsSchema: {
+    name: { type: 'string', required: true }
+  },
+  outputSchema: {},
+  execute: async () => ({ ok: true })
 });
 ```
 
@@ -77,6 +123,8 @@ This mechanism gives PIVOT a hard boundary:
 Frontend checks improve interaction and explainability, but backend APIs remain the real security boundary.
 
 Registered capabilities are immutable snapshots. The registry deep-clones and deeply freezes capability definitions so later mutations to the original input object cannot change params, permissions, risk, or metadata.
+
+`listCapabilities()` and registry `list()` can filter by `domain`, `group`, `version`, `tag`, and `tags` in addition to `resource`, `action`, and `permission`.
 
 ## Execution Flow
 

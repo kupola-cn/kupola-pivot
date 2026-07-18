@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.8 - Capability Manifests
+
+### Added
+
+- `createCapabilityManifest()` and `validateCapabilityManifest()` helpers.
+- Capability manifest metadata for `manifestVersion`, `version`, `domain`, `group`, `tags`, `dependencies`, `inputSchema`, `outputSchema`, and `examples`.
+- Capability registry list filters for `domain`, `group`, `version`, `tag`, and `tags`.
+- Docs and smoke coverage for manifest registration and filtering.
+
 ## 0.2.7 - Plan Param References
 
 ### Added

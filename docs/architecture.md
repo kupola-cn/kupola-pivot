@@ -32,6 +32,11 @@ A capability declares:
 - action
 - risk level
 - parameter schema
+- input and output schema
+- capability version
+- domain, group, and tags for discovery
+- dependency descriptions for multi-step flows
+- example templates for project integration
 - permission hints
 - confirmation requirement
 - project-owned execute function

@@ -43,6 +43,24 @@ export function createCapabilityRegistry(options = {}) {
         if (filter.resource && capability.resource !== filter.resource) return false;
         if (filter.action && capability.action !== filter.action) return false;
         if (filter.permission && !capability.permissions.includes(filter.permission)) return false;
+        if (filter.domain && capability.domain !== filter.domain) return false;
+        if (filter.group && capability.group !== filter.group) return false;
+        if (filter.version && capability.version !== filter.version) return false;
+
+        if (Array.isArray(filter.tags) && filter.tags.length > 0) {
+          const capabilityTags = Array.isArray(capability.tags) ? capability.tags : [];
+
+          if (!filter.tags.every((tag) => capabilityTags.includes(tag))) {
+            return false;
+          }
+        } else if (filter.tag) {
+          const capabilityTags = Array.isArray(capability.tags) ? capability.tags : [];
+
+          if (!capabilityTags.includes(filter.tag)) {
+            return false;
+          }
+        }
+
         return true;
       });
     },
