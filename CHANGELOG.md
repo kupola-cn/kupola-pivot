@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.14 - Plan Node Contracts
+
+### Added
+
+- Node `input` mappings for clearer plan data flow.
+- Node `inputSchema` checks before execution.
+- Node `outputSchema` checks after successful execution.
+- Smoke coverage for mapped inputs, valid output contracts, and output contract failures.
+
 ## 0.2.13 - Node Retry and Timeout
 
 ### Added

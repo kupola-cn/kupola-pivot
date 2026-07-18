@@ -3,7 +3,10 @@ export interface PivotPlanNode {
   type?: string;
   capability?: string;
   command?: unknown;
+  input?: Record<string, unknown>;
   params?: Record<string, unknown>;
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
   risk?: string;
   intent?: string;
   retry?: PivotPlanNodeRetry;

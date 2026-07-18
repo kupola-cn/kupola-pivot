@@ -65,6 +65,8 @@ export function validatePlan(plan, options = {}) {
       continue;
     }
 
+    validateNodeContracts(node, errors);
+
     if (nodeIds.has(node.id)) {
       errors.push(`Duplicate plan node id: ${node.id}`);
     }
@@ -298,6 +300,26 @@ function validateEdgeCondition(condition, errors) {
 
   if (condition.in !== undefined && !Array.isArray(condition.in)) {
     errors.push('Plan edge condition in must be an array.');
+  }
+}
+
+function validateNodeContracts(node, errors) {
+  const fields = [
+    ['input', node.input],
+    ['params', node.params],
+    ['inputSchema', node.inputSchema],
+    ['outputSchema', node.outputSchema],
+    ['retry', node.retry],
+    ['timeout', node.timeout],
+    ['approval', node.approval],
+    ['compensate', node.compensate],
+    ['metadata', node.metadata]
+  ];
+
+  for (const [field, value] of fields) {
+    if (value !== undefined && !isPlainObject(value)) {
+      errors.push(`Plan node ${field} must be a plain object.`);
+    }
   }
 }
 

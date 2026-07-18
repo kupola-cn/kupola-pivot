@@ -33,7 +33,7 @@ export { addEdge, addNode, createPlan, evaluatePlanEdgeCondition, getExecutionLa
 export { createTrustedUIAdapter, mountResult, mountTimeline, renderResultToHTML, renderTimelineToHTML } from '@kupola/pivot-ui';
 export { createCapabilityRegistry } from './capability-registry.js';
 
-import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, redactParams } from '@kupola/pivot-protocol';
+import { CommandStatus, RiskLevel, createAuditEvent, createCommand, createResult, createValidationResult, redactParams, validateParams } from '@kupola/pivot-protocol';
 import { PolicyDecision, confirm, createPolicyPipeline } from '@kupola/pivot-policy';
 import { evaluatePlanEdgeCondition, getExecutionLayers, getExecutionOrder, validatePlan } from '@kupola/pivot-orchestrator';
 import { createCapabilityRegistry } from './capability-registry.js';
@@ -393,9 +393,32 @@ export function createPivotRuntime(options = {}) {
         continue;
       }
 
-      const command = node.command
-        ? previewPlanCommand(node.command)
-        : createPlanNodeCommand(plan, node, capability, null);
+      const command = createPlanNodeCommand(plan, node, capability, null, { preview: true });
+      const inputValidation = validatePlanNodeInputContract(node, command.params);
+
+      if (!inputValidation.valid) {
+        const preview = createResult({
+          ok: false,
+          message: 'Plan node input contract failed.',
+          explain: {
+            nodeId: node.id,
+            capability: node.capability,
+            contract: 'input',
+            errors: inputValidation.errors,
+            warnings: inputValidation.warnings
+          }
+        });
+
+        nodePreviews.push({ node, command: previewPlanCommand(command), preview });
+        timeline.push(createTimelineStep('plan.node.preview', 'blocked', `Plan node preview blocked: ${node.id}`, {
+          nodeId: node.id,
+          capability: node.capability,
+          contract: 'input',
+          reason: preview.message
+        }));
+        continue;
+      }
+
       const preview = await previewCommand(command, {
         ...context,
         plan,
@@ -411,6 +434,10 @@ export function createPivotRuntime(options = {}) {
         nodeId: node.id,
         capability: node.capability,
         commandId: command.id,
+        contract: {
+          inputSchema: node.inputSchema ?? null,
+          outputSchema: node.outputSchema ?? null
+        },
         reason: preview.message
       }));
     }
@@ -725,9 +752,7 @@ async function executePlanNode({ plan, node, context, registry, executeCommand, 
   let command;
 
   try {
-    command = node.command
-      ? resolvePlanCommand(node.command, resultsByNodeId)
-      : createPlanNodeCommand(plan, node, capability, resultsByNodeId);
+    command = createPlanNodeCommand(plan, node, capability, resultsByNodeId);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const result = createResult({
@@ -745,12 +770,66 @@ async function executePlanNode({ plan, node, context, registry, executeCommand, 
     return { node, command: null, result, timeline };
   }
 
+  const inputValidation = validatePlanNodeInputContract(node, command.params);
+
+  if (!inputValidation.valid) {
+    const result = createResult({
+      ok: false,
+      message: 'Plan node input contract failed.',
+      explain: {
+        nodeId: node.id,
+        capability: node.capability,
+        contract: 'input',
+        errors: inputValidation.errors,
+        warnings: inputValidation.warnings
+      }
+    });
+
+    timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
+      nodeId: node.id,
+      capability: node.capability,
+      contract: 'input',
+      reason: result.message
+    }));
+
+    return { node, command, result, timeline };
+  }
+
   const result = await executeCommand(command, {
     ...context,
     plan,
     node,
     planResults: resultsByNodeId
   }, getPlanNodeExecutionOptions(node));
+
+  const outputValidation = validatePlanNodeOutputContract(node, result.data);
+
+  if (result.ok && !outputValidation.valid) {
+    const contractResult = createResult({
+      ok: false,
+      data: result.data,
+      message: 'Plan node output contract failed.',
+      explain: {
+        ...result.explain,
+        nodeId: node.id,
+        capability: node.capability,
+        contract: 'output',
+        errors: outputValidation.errors,
+        warnings: outputValidation.warnings
+      },
+      audit: result.audit
+    });
+
+    timeline.push(...(Array.isArray(result.explain?.timeline) ? result.explain.timeline : []));
+    timeline.push(createTimelineStep('plan.node', 'failed', `Plan node failed: ${node.id}`, {
+      nodeId: node.id,
+      capability: node.capability,
+      contract: 'output',
+      reason: contractResult.message
+    }));
+
+    return { node, command, result: contractResult, timeline };
+  }
 
   if (Array.isArray(result.explain?.timeline)) {
     timeline.push(...result.explain.timeline);
@@ -943,10 +1022,14 @@ function createSkippedPlanNodeResult(node, reason, runState) {
   });
 }
 
-function createPlanNodeCommand(plan, node, capability, resultsByNodeId = {}) {
-  const params = resultsByNodeId === null
-    ? previewPlanParams(node.params ?? {})
-    : resolvePlanParams(node.params ?? {}, resultsByNodeId);
+function createPlanNodeCommand(plan, node, capability, resultsByNodeId = {}, options = {}) {
+  const preview = Boolean(options.preview);
+
+  if (node.command) {
+    return resolvePlanCommand(node.command, resultsByNodeId, node.input, preview);
+  }
+
+  const params = buildPlanNodeParams(node, resultsByNodeId, preview);
 
   return createCommand({
     intent: node.intent ?? plan.intent,
@@ -963,10 +1046,13 @@ function createPlanNodeCommand(plan, node, capability, resultsByNodeId = {}) {
   });
 }
 
-function resolvePlanCommand(command, resultsByNodeId) {
+function resolvePlanCommand(command, resultsByNodeId, input = {}, preview = false) {
+  const commandParams = preview ? previewPlanParams(command.params ?? {}) : resolvePlanParams(command.params ?? {}, resultsByNodeId);
+  const inputParams = preview ? previewPlanParams(input ?? {}) : resolvePlanParams(input ?? {}, resultsByNodeId);
+
   return {
     ...command,
-    params: resolvePlanParams(command.params ?? {}, resultsByNodeId)
+    params: mergePlanNodeParams(inputParams, commandParams)
   };
 }
 
@@ -974,6 +1060,31 @@ function previewPlanCommand(command) {
   return {
     ...command,
     params: previewPlanParams(command.params ?? {})
+  };
+}
+
+function buildPlanNodeParams(node, resultsByNodeId, preview = false) {
+  const inputParams = preview ? previewPlanParams(node.input ?? {}) : resolvePlanParams(node.input ?? {}, resultsByNodeId);
+  const explicitParams = preview ? previewPlanParams(node.params ?? {}) : resolvePlanParams(node.params ?? {}, resultsByNodeId);
+  return mergePlanNodeParams(inputParams, explicitParams);
+}
+
+function mergePlanNodeParams(inputParams, explicitParams) {
+  if (!isPlainObject(inputParams) && !isPlainObject(explicitParams)) {
+    return {};
+  }
+
+  if (!isPlainObject(inputParams)) {
+    return explicitParams;
+  }
+
+  if (!isPlainObject(explicitParams)) {
+    return inputParams;
+  }
+
+  return {
+    ...inputParams,
+    ...explicitParams
   };
 }
 
@@ -1017,6 +1128,26 @@ function resolvePlanParams(value, resultsByNodeId) {
   }
 
   return value;
+}
+
+function validatePlanNodeInputContract(node, params) {
+  return validatePlanNodeContract(node.inputSchema, params, 'input');
+}
+
+function validatePlanNodeOutputContract(node, data) {
+  return validatePlanNodeContract(node.outputSchema, data, 'output');
+}
+
+function validatePlanNodeContract(schema, value, contractName) {
+  if (!isPlainObject(schema) || Object.keys(schema).length === 0) {
+    return createValidationResult();
+  }
+
+  if (!isPlainObject(value)) {
+    return createValidationResult([`Plan node ${contractName} must resolve to a plain object.`]);
+  }
+
+  return validateParams(value, schema, { allowUnknown: true });
 }
 
 function readPath(source, path) {

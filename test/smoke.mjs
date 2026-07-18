@@ -280,6 +280,19 @@ runtime.registerCapability({
   execute: async ({ params }) => ({ id: 'finalized-1', ...params })
 });
 
+runtime.registerCapability({
+  name: 'organization.create.partial',
+  resource: 'organization',
+  action: ActionType.CREATE,
+  risk: RiskLevel.LOW,
+  permissions: ['organization:create'],
+  paramsSchema: {
+    name: { type: 'string', required: true },
+    parentId: { type: 'string', required: true }
+  },
+  execute: async ({ params }) => ({ id: 'partial-1', name: params.name })
+});
+
 approvalRuntime.registerCapability({
   name: 'organization.classify',
   resource: 'organization',
@@ -623,6 +636,62 @@ const referencedPlan = createPlan({
   edges: [{ from: 'lookup-parent', to: 'create-referenced-branch' }]
 });
 
+const contractPlan = createPlan({
+  intent: 'Create a HIS organization branch with explicit input mapping and output contract.',
+  nodes: [
+    { id: 'lookup-parent-contract', capability: 'organization.query' },
+    {
+      id: 'create-branch-contract',
+      capability: 'organization.create',
+      input: {
+        name: 'Branch L',
+        parentId: { $from: 'lookup-parent-contract', path: 'data.id' }
+      },
+      inputSchema: {
+        name: { type: 'string', required: true },
+        parentId: { type: 'string', required: true }
+      },
+      outputSchema: {
+        id: { type: 'string', required: true },
+        name: { type: 'string', required: true },
+        parentId: { type: 'string', required: true }
+      }
+    }
+  ],
+  edges: [{ from: 'lookup-parent-contract', to: 'create-branch-contract' }]
+});
+
+const invalidContractPlan = createPlan({
+  intent: 'Reject an invalid plan node contract.',
+  nodes: [
+    {
+      id: 'invalid-contract-node',
+      capability: 'organization.create',
+      input: 'bad-input'
+    }
+  ],
+  edges: []
+});
+
+const outputContractFailurePlan = createPlan({
+  intent: 'Reject a node whose output does not match the declared contract.',
+  nodes: [
+    {
+      id: 'output-contract-failure',
+      capability: 'organization.create.partial',
+      input: {
+        name: 'Branch M',
+        parentId: 'group'
+      },
+      outputSchema: {
+        id: { type: 'string', required: true },
+        parentId: { type: 'string', required: true }
+      }
+    }
+  ],
+  edges: []
+});
+
 const brokenReferencePlan = createPlan({
   intent: 'Try to create a branch with a missing reference.',
   nodes: [
@@ -772,6 +841,7 @@ const timeoutPlan = createPlan({
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const invalidConditionalPlanValidation = validatePlan(invalidConditionalPlan);
+const invalidContractPlanValidation = validatePlan(invalidContractPlan);
 const order = getExecutionOrder(plan);
 const planPreview = await runtime.previewPlan(plan, {
   actor: {
@@ -797,13 +867,31 @@ const referencedPlanPreview = await runtime.previewPlan(referencedPlan, {
     permissions: ['organization:query', 'organization:create']
   }
 });
+const contractPlanPreview = await runtime.previewPlan(contractPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
 const referencedPlanResult = await runtime.executePlan(referencedPlan, {
   actor: {
     id: 'user-1',
     permissions: ['organization:query', 'organization:create']
   }
 });
+const contractPlanResult = await runtime.executePlan(contractPlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:query', 'organization:create']
+  }
+});
 const brokenReferenceResult = await runtime.executePlan(brokenReferencePlan, {
+  actor: {
+    id: 'user-1',
+    permissions: ['organization:create']
+  }
+});
+const outputContractFailureResult = await runtime.executePlan(outputContractFailurePlan, {
   actor: {
     id: 'user-1',
     permissions: ['organization:create']
@@ -894,6 +982,10 @@ if (invalidConditionalPlanValidation.valid || !invalidConditionalPlanValidation.
   throw new Error('Expected plan validation to reject unknown plan edge condition strings.');
 }
 
+if (invalidContractPlanValidation.valid || !invalidContractPlanValidation.errors.some((error) => error.includes('Plan node input must be a plain object'))) {
+  throw new Error('Expected plan validation to reject invalid node contract shapes.');
+}
+
 if (!planPreview.ok || !planPreview.data.requiresConfirmation || planPreview.data.status !== 'ready') {
   throw new Error('Expected plan preview to be ready and require confirmation.');
 }
@@ -922,8 +1014,24 @@ if (!referencedPlanResult.ok || referencedPlanResult.data.nodes[1].result.data.p
   throw new Error('Expected plan execution to resolve params from previous node results.');
 }
 
+if (!contractPlanPreview.ok || contractPlanPreview.data.nodes[1].command.params.parentId !== '[ref:lookup-parent-contract.data.id]') {
+  throw new Error('Expected input mapping preview to show reference placeholders.');
+}
+
+if (!contractPlanResult.ok || contractPlanResult.data.nodes[1].result.data.parentId !== 'group') {
+  throw new Error('Expected input mapping execution to resolve mapped node input values.');
+}
+
 if (brokenReferenceResult.ok || !brokenReferenceResult.data.nodes[0].result.message.includes('params could not be resolved')) {
   throw new Error('Expected plan execution to fail when a param reference cannot be resolved.');
+}
+
+if (outputContractFailureResult.ok || !outputContractFailureResult.data.nodes[0].result.message.includes('output contract failed')) {
+  throw new Error('Expected plan execution to fail when a node output violates its contract.');
+}
+
+if (!outputContractFailureResult.explain.timeline.some((step) => step.stage === 'plan.node' && step.status === 'failed' && step.metadata.contract === 'output')) {
+  throw new Error('Expected output contract failure to appear in the plan timeline.');
 }
 
 if (!conditionalPlanResult.ok || conditionalPlanResult.data.nodes.length !== 3) {

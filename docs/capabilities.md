@@ -294,6 +294,36 @@ const plan = createPlan({
 
 `retry.maxAttempts` counts total execution attempts, including the first one. `timeout.ms` applies to each attempt of the node execution stage. These controls wrap capability execution only; validation, policy checks, approval gates, and dependency checks still run once per node. Timeouts do not cancel external side effects automatically, so capabilities should still be idempotent where possible.
 
+Plan nodes can also separate mapped input from literal params and attach contracts to the resolved payload and result:
+
+```js
+const plan = createPlan({
+  nodes: [
+    { id: 'lookup-parent', capability: 'organization.query' },
+    {
+      id: 'create-branch',
+      capability: 'organization.create',
+      input: {
+        parentId: { $from: 'lookup-parent', path: 'data.id' }
+      },
+      params: {
+        name: 'Branch C'
+      },
+      inputSchema: {
+        parentId: { type: 'string', required: true },
+        name: { type: 'string', required: true }
+      },
+      outputSchema: {
+        id: { type: 'string', required: true },
+        parentId: { type: 'string', required: true }
+      }
+    }
+  ]
+});
+```
+
+`input` is resolved first and merged under the node command params. `params` can still provide literals or overrides. `inputSchema` validates the resolved node payload before execution, and `outputSchema` validates successful result data after execution. This keeps the mapping rules explicit without removing the existing `$from` reference syntax.
+
 ## Conditional Plan Edges
 
 Plan edges can include declarative conditions. PIVOT does not run arbitrary JavaScript expressions from plans.
@@ -416,3 +446,5 @@ const plan = createPlan({
 ```
 
 During `previewPlan`, references are shown as placeholders such as `[ref:lookup-parent.data.id]`. During `executePlan`, references are resolved from previous node results. If a source node or path cannot be found, the node fails before its capability execute function is called.
+
+When a node uses `input`, the same reference rules apply and the resolved values are merged before the command is previewed or executed.

@@ -91,6 +91,8 @@ This keeps early workflow modeling practical without forcing a visual workflow e
 
 Plan nodes can also request per-node retry and timeout controls. Retries count total execution attempts for the capability execution stage, and timeouts apply to each attempt without changing the DAG semantics or the approval/policy flow around the node.
 
+Plan nodes may declare `input` mappings plus `inputSchema` and `outputSchema` contracts. Mapped input is resolved before execution, the input contract is checked before the capability runs, and the output contract is checked after a successful capability result returns.
+
 The default behavior stops on the first failed node. Apps can pass `{ stopOnError: false }` to continue and collect all node results.
 
 Plan edges may include declarative conditions. Conditional branches are evaluated from previous node results during execution, and non-matching branch nodes are marked as skipped instead of calling their capabilities. Conditions are data objects or known string aliases, not executable JavaScript.
