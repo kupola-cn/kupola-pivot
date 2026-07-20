@@ -70,6 +70,13 @@ export type PivotPlanEdgeCondition =
       equals?: unknown;
       notEquals?: unknown;
       in?: unknown[];
+      gt?: unknown;
+      gte?: unknown;
+      lt?: unknown;
+      lte?: unknown;
+      contains?: unknown;
+      empty?: boolean;
+      notEmpty?: boolean;
     };
 
 export interface PivotPlan {

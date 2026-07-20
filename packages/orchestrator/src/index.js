@@ -208,6 +208,34 @@ export function evaluatePlanEdgeCondition(edge, sourceResult) {
     return false;
   }
 
+  if (Object.hasOwn(condition, 'gt') && !(pathResult.value > condition.gt)) {
+    return false;
+  }
+
+  if (Object.hasOwn(condition, 'gte') && !(pathResult.value >= condition.gte)) {
+    return false;
+  }
+
+  if (Object.hasOwn(condition, 'lt') && !(pathResult.value < condition.lt)) {
+    return false;
+  }
+
+  if (Object.hasOwn(condition, 'lte') && !(pathResult.value <= condition.lte)) {
+    return false;
+  }
+
+  if (Object.hasOwn(condition, 'contains') && !containsValue(pathResult.value, condition.contains)) {
+    return false;
+  }
+
+  if (typeof condition.empty === 'boolean' && isEmptyValue(pathResult.value) !== condition.empty) {
+    return false;
+  }
+
+  if (typeof condition.notEmpty === 'boolean' && !isEmptyValue(pathResult.value) !== condition.notEmpty) {
+    return false;
+  }
+
   return true;
 }
 
@@ -282,8 +310,23 @@ function validateEdgeCondition(condition, errors) {
     return;
   }
 
-  const allowedFields = new Set(['ok', 'skipped', 'path', 'exists', 'equals', 'notEquals', 'in']);
-  const operatorFields = ['ok', 'skipped', 'exists', 'equals', 'notEquals', 'in'];
+  const allowedFields = new Set([
+    'ok',
+    'skipped',
+    'path',
+    'exists',
+    'equals',
+    'notEquals',
+    'in',
+    'gt',
+    'gte',
+    'lt',
+    'lte',
+    'contains',
+    'empty',
+    'notEmpty'
+  ]);
+  const operatorFields = ['ok', 'skipped', 'exists', 'equals', 'notEquals', 'in', 'gt', 'gte', 'lt', 'lte', 'contains', 'empty', 'notEmpty'];
   const hasOperator = operatorFields.some((field) => Object.hasOwn(condition, field));
 
   for (const field of Object.keys(condition)) {
@@ -314,6 +357,14 @@ function validateEdgeCondition(condition, errors) {
 
   if (condition.in !== undefined && !Array.isArray(condition.in)) {
     errors.push('Plan edge condition in must be an array.');
+  }
+
+  if (condition.empty !== undefined && typeof condition.empty !== 'boolean') {
+    errors.push('Plan edge condition empty must be a boolean.');
+  }
+
+  if (condition.notEmpty !== undefined && typeof condition.notEmpty !== 'boolean') {
+    errors.push('Plan edge condition notEmpty must be a boolean.');
   }
 }
 
@@ -453,4 +504,40 @@ function getPath(value, path) {
   }
 
   return { found: true, value: current };
+}
+
+function containsValue(value, expected) {
+  if (typeof value === 'string') {
+    return value.includes(String(expected));
+  }
+
+  if (Array.isArray(value)) {
+    return value.includes(expected);
+  }
+
+  if (value instanceof Set) {
+    return value.has(expected);
+  }
+
+  return false;
+}
+
+function isEmptyValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return true;
+  }
+
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+
+  if (value instanceof Set || value instanceof Map) {
+    return value.size === 0;
+  }
+
+  if (isPlainObject(value)) {
+    return Object.keys(value).length === 0;
+  }
+
+  return false;
 }

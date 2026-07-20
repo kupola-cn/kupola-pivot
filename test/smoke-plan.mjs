@@ -8,6 +8,7 @@ import {
   createPermissionPolicy,
   createPivotRuntime,
   createTrustedUIAdapter,
+  evaluatePlanEdgeCondition,
   getExecutionOrder,
   parseStructuredCommandOutput,
   parseStructuredPlanOutput,
@@ -195,6 +196,21 @@ const invalidConditionalPlan = createPlan({
   ]
 });
 
+const invalidAdvancedConditionPlan = createPlan({
+  intent: 'Reject malformed advanced edge conditions.',
+  nodes: [
+    { id: 'classify-malformed', capability: 'organization.classify' },
+    { id: 'create-malformed', capability: 'organization.create' }
+  ],
+  edges: [
+    {
+      from: 'classify-malformed',
+      to: 'create-malformed',
+      condition: { path: 'data.total', empty: 'yes' }
+    }
+  ]
+});
+
 const approvalPlan = createPlan({
   intent: 'Classify, approve, and finalize an organization branch.',
   nodes: [
@@ -289,6 +305,7 @@ const timeoutPlan = createPlan({
 const planValidation = validatePlan(plan);
 const limitedPlanValidation = validatePlan(plan, { maxNodes: 1, maxEdges: 1 });
 const invalidConditionalPlanValidation = validatePlan(invalidConditionalPlan);
+const invalidAdvancedConditionPlanValidation = validatePlan(invalidAdvancedConditionPlan);
 const invalidContractPlanValidation = validatePlan(invalidContractPlan);
 const order = getExecutionOrder(plan);
 const planPreview = await runtime.previewPlan(plan, {
@@ -453,6 +470,56 @@ if (limitedPlanValidation.valid || !limitedPlanValidation.errors.some((error) =>
 
 if (invalidConditionalPlanValidation.valid || !invalidConditionalPlanValidation.errors.some((error) => error.includes('Unknown plan edge condition'))) {
   throw new Error('Expected plan validation to reject unknown plan edge condition strings.');
+}
+
+if (invalidAdvancedConditionPlanValidation.valid || !invalidAdvancedConditionPlanValidation.errors.some((error) => error.includes('empty must be a boolean'))) {
+  throw new Error('Expected plan validation to reject malformed advanced edge conditions.');
+}
+
+const advancedConditionSource = {
+  ok: true,
+  data: {
+    total: 2,
+    name: 'Zhang San',
+    tags: ['admin', 'active'],
+    records: [{ id: 'u-1' }]
+  }
+};
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.total', gt: 1 } }, advancedConditionSource)) {
+  throw new Error('Expected gt edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.total', gte: 2 } }, advancedConditionSource)) {
+  throw new Error('Expected gte edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.total', lt: 3 } }, advancedConditionSource)) {
+  throw new Error('Expected lt edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.total', lte: 2 } }, advancedConditionSource)) {
+  throw new Error('Expected lte edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.name', contains: 'San' } }, advancedConditionSource)) {
+  throw new Error('Expected string contains edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.tags', contains: 'active' } }, advancedConditionSource)) {
+  throw new Error('Expected array contains edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.records', notEmpty: true } }, advancedConditionSource)) {
+  throw new Error('Expected notEmpty edge condition to match.');
+}
+
+if (!evaluatePlanEdgeCondition({ condition: { path: 'data.missing', empty: true } }, advancedConditionSource)) {
+  throw new Error('Expected empty edge condition to match missing values.');
+}
+
+if (evaluatePlanEdgeCondition({ condition: { path: 'data.total', gt: 5 } }, advancedConditionSource)) {
+  throw new Error('Expected non-matching gt edge condition to fail.');
 }
 
 if (invalidContractPlanValidation.valid || !invalidContractPlanValidation.errors.some((error) => error.includes('Plan node input must be a plain object'))) {
