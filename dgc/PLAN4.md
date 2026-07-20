@@ -39,6 +39,9 @@ PLAN4 的目标不是继续堆新节点，而是做发布前硬化：
 
 ## 阶段 2：Kupola UI 复用核查
 
+- [x] 新增 `FlowWorkbench` 业务页面封装，HIS 页面只负责传入 flow、nodeTypes、Runtime/capability 和 adapters。
+- [x] `FlowWorkbench` 使用 Kupola `ds-*` class 和 token，未新增基础 Button/Form/Table primitive。
+- [x] `FlowWorkbench` 提供节点库、无限画布、节点拖动、输入/输出端口拖拽连线、属性面板、运行结果和日志。
 - [ ] 梳理当前 Flow UI 使用的 Kupola class/token。
 - [ ] 确认 `@kupola/kupola` 是否提供可直接 import 的 Button/Form/Table/Drawer/Modal/Message 组件。
 - [ ] 如存在稳定组件 API，优先封装 Flow UI adapter，不直接重写基础组件。
@@ -56,9 +59,9 @@ PLAN4 的目标不是继续堆新节点，而是做发布前硬化：
 ## 阶段 4：类型和导出检查
 
 - [ ] 检查 package `exports` 的 `.`、`./ui`、`./css`。
-- [ ] 检查 `src/index.d.ts` 与 JS export 是否一致。
-- [ ] 检查 `src/ui.d.ts` 与 `src/ui.js` 是否一致。
-- [ ] 增加必要的 subpath import 测试。
+- [x] 检查 `src/index.d.ts` 与 JS export 是否一致。
+- [x] 检查 `src/ui.d.ts` 与 `src/ui.js` 是否一致。
+- [x] 增加必要的 subpath import 测试。
 - [ ] 保持 package version 不变。
 
 ## 阶段 5：发布前验收清单
