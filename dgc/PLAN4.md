@@ -20,7 +20,7 @@ PLAN4 的目标不是继续堆新节点，而是做发布前硬化：
 
 ## 核心目标
 
-- 让 `examples/his-flow-designer` 成为可直接验证的 HIS Flow Designer 示例。
+- 让 `his-sys/his-web/pages/his-flow-designer.html` 成为可直接验证的 HIS Flow Designer 页面。
 - 确认 `@kupola/pivot-flow/ui` 和 `@kupola/pivot-flow/css` 的实际接入体验。
 - 明确 headless API 与 UI API 的稳定边界。
 - 检查默认 UI 是否真实复用 Kupola UI 体系，不重复造基础组件。
@@ -28,14 +28,14 @@ PLAN4 的目标不是继续堆新节点，而是做发布前硬化：
 
 ## 阶段 1：可运行 HIS Demo
 
-- [ ] 增加可运行的 `examples/his-flow-designer.html`。
-- [ ] 示例使用 `createPivotFlowApp()` 挂载完整 FlowManager。
-- [ ] 示例默认加载 `user.query-by-name` 模板。
-- [ ] 示例注册 `user.query` capability。
-- [ ] 示例注册 `human.select`、`ui.display`、`message.show` frontend adapters。
-- [ ] 示例提供 mock HIS 用户数据，能覆盖张三多条结果。
-- [ ] 示例通过 `resourceSchemas.users` 驱动查询条件编辑器。
-- [ ] 启动本地静态服务并验证页面可访问。
+- [x] 增加可运行的 `his-sys/his-web/pages/his-flow-designer.html`。
+- [x] HIS 页面使用 `@kupola/pivot-flow` 模板、节点 schema、`flowToPlan()` 和 Runtime 执行能力，不直接裸露包内部 FlowManager 控制台。
+- [x] 示例默认加载 `user.query-by-name` 模板，并收敛为当前 Runtime 稳定支持的顺序执行链路。
+- [x] 示例注册 `user.query` capability。
+- [x] 示例注册 `human.select`、`ui.display`、`message.show` frontend adapters。
+- [x] 示例提供 mock HIS 用户数据，能覆盖张三多条结果。
+- [x] 示例提供节点属性 JSON 编辑、节点添加、节点选择和节点连接入口。
+- [x] 启动 Vite 服务并通过浏览器验证页面可访问、可执行。
 
 ## 阶段 2：Kupola UI 复用核查
 
@@ -49,7 +49,7 @@ PLAN4 的目标不是继续堆新节点，而是做发布前硬化：
 
 - [ ] README 增加 headless API 和 UI API 对照表。
 - [ ] README 标注稳定 API、实验 API 和内部 API。
-- [ ] README 补充 `@kupola/pivot-flow/ui`、`@kupola/pivot-flow/css`、`examples/his-flow-designer.html` 使用说明。
+- [ ] README 补充 `@kupola/pivot-flow/ui`、`@kupola/pivot-flow/css`、`his-sys/his-web/pages/his-flow-designer.html` 使用说明。
 - [ ] 文档明确 backend authorization、data scope、audit、transaction 仍由后端负责。
 - [ ] 文档说明 renderer replacement、frontend adapter 和 custom node 的边界。
 
@@ -71,10 +71,10 @@ PLAN4 的目标不是继续堆新节点，而是做发布前硬化：
 
 ## 验收标准
 
-- [ ] HIS demo 页面可以在本地静态服务中打开。
-- [ ] Demo 中可以看到 FlowManager、模板、画布、Inspector、Preview/Run 面板。
-- [ ] Demo 默认流程使用通用 Query Node 完成“查询张三的信息”。
-- [ ] Demo 的多条张三结果进入 `human.select` 并展示选中详情。
+- [x] HIS demo 页面可以在本地 Vite 服务中打开。
+- [x] Demo 中可以看到 HIS 业务化节点库、画布、Inspector、Preview/Run 和结果面板。
+- [x] Demo 默认流程使用通用 Query Node 完成“查询张三的信息”。
+- [x] Demo 的多条张三结果进入 `human.select` 并展示选中详情。
 - [ ] 文档能让使用者在 10 分钟内接入默认设计器。
 - [ ] 文档明确 UI 基于 Kupola UI，不重复实现基础组件。
 - [ ] `@kupola/pivot-flow/ui` 和 `@kupola/pivot-flow/css` 的使用方式清楚。
