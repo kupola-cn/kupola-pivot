@@ -723,13 +723,13 @@ createFlow({
 
 ### 阶段 1：节点模型收敛
 
-- [ ] 明确 FlowNode 标准字段。
-- [ ] 明确通用节点类型。
-- [ ] 增加 `data.query`、`human.select`、`ui.display`、`output.return`、`subflow.run` 类型。
-- [ ] 增加自定义节点注册表：`registerFlowNodeType()`。
-- [ ] 扩展条件操作符：`gt`、`gte`、`lt`、`lte`、`contains`、`empty`、`notEmpty`。
-- [ ] 让 `flowToPlan` 能稳定映射新节点类型。
-- [ ] 子流程引用需要检测递归、循环依赖、权限和版本策略。
+- [x] 明确 FlowNode 标准字段。
+- [x] 明确通用节点类型。
+- [x] 增加 `data.query`、`human.select`、`ui.display`、`output.return`、`subflow.run` 类型。
+- [x] 增加自定义节点注册表：`registerFlowNodeType()`。
+- [x] 扩展条件操作符：`gt`、`gte`、`lt`、`lte`、`contains`、`empty`、`notEmpty`。
+- [x] 让 `flowToPlan` 能稳定映射新节点类型。
+- [x] 子流程引用需要检测递归、循环依赖、权限和版本策略。
 
 ### 阶段 2：schema 驱动 Inspector
 
@@ -773,13 +773,13 @@ createFlow({
 - [ ] 使用者只需要注册 capability 和 resource schema，就能配置大部分通用流程。
 - [ ] “查询张三的信息”能通过通用 Query Node 完成，而不是写专用 UserQueryNode。
 - [ ] 查询结果 0 条、1 条、多条都有默认 UI 行为。
-- [ ] 节点连线前会校验重复边、自连接、环和非法端口。
-- [ ] 设计出来的 Flow 可以保存、预览、执行、发布。
-- [ ] 高风险节点必须保留确认、审批、权限和审计边界。
+- [x] 节点连线前会校验重复边、自连接、环和非法端口。
+- [x] 设计出来的 Flow 可以保存、预览、执行、发布。
+- [x] 高风险节点必须保留确认、审批、权限和审计边界。
 - [ ] 默认 UI 可用，但业务项目可以替换 renderer。
 - [ ] 默认 UI 使用 Kupola UI 组件实现，不重复造基础 Table/Form/Modal/Drawer。
-- [ ] 子流程可以作为节点复用，且不会绕过权限、确认、审批和审计。
-- [ ] 使用者可以注册自定义节点，但自定义节点最终仍映射到 capability、subflow、condition、transform 或 display。
+- [x] 子流程可以作为节点复用，且不会绕过权限、确认、审批和审计。
+- [x] 使用者可以注册自定义节点，但自定义节点最终仍映射到 capability、subflow、condition、transform 或 display。
 
 ## 一句话方向
 
