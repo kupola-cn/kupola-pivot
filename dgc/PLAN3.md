@@ -733,11 +733,11 @@ createFlow({
 
 ### 阶段 2：schema 驱动 Inspector
 
-- [ ] 根据 capability `paramsSchema` 自动生成参数表单。
-- [ ] 根据 resource schema 自动生成查询条件编辑器。
-- [ ] 支持字段选择、操作符选择、默认值和模板变量插入。
-- [ ] 支持输出 schema 预览。
-- [ ] 自定义节点 Inspector 默认复用 schema 表单，可按需扩展。
+- [x] 根据 capability `paramsSchema` 自动生成参数表单。
+- [x] 根据 resource schema 自动生成查询条件编辑器。
+- [x] 支持字段选择、操作符选择、默认值和模板变量插入。
+- [x] 支持输出 schema 预览。
+- [x] 自定义节点 Inspector 默认复用 schema 表单，可按需扩展。
 
 ### 阶段 3：画布交互升级
 
