@@ -741,13 +741,13 @@ createFlow({
 
 ### 阶段 3：画布交互升级
 
-- [ ] NodePalette 拖拽到画布。
-- [ ] 节点位置写入 `node.ui.position`。
-- [ ] 节点端口渲染。
-- [ ] 点击端口或拖拽端口创建 edge。
-- [ ] 创建 edge 前调用 `canConnectFlowNodes`。
-- [ ] 连线失败直接显示原因。
-- [ ] 画布、Inspector、Panel、Drawer、Modal、Table、Form 必须复用 Kupola UI。
+- [x] NodePalette 拖拽到画布。
+- [x] 节点位置写入 `node.ui.position`。
+- [x] 节点端口渲染。
+- [x] 点击端口或拖拽端口创建 edge。
+- [x] 创建 edge 前调用 `canConnectFlowNodes`。
+- [x] 连线失败直接显示原因。
+- [x] 画布、Inspector、Panel、Drawer、Modal、Table、Form 必须复用 Kupola UI。
 
 ### 阶段 4：查询场景闭环
 
