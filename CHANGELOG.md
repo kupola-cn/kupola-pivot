@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.15 - Flow Plans and Command Simulation
+
 ### Added
 
 - AI workflow integration example covering structured-output validation feedback, plan preview, approval, execution, compensation, and audit sink export.
