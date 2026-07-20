@@ -759,25 +759,25 @@ createFlow({
 
 ### 阶段 5：npm 使用体验
 
-- [ ] 增加 `createPivotFlowApp` 或 `createFlowDesigner` 一键入口。
-- [ ] 文档提供 10 分钟接入示例。
-- [ ] examples 增加 HIS Flow Designer 实例（HIS项目中）。
-- [ ] 增加 `@kupola/pivot-flow/css` 默认样式。
-- [ ] 增加 headless API 与 UI API 的边界说明。
-- [ ] 短期提供 `@kupola/pivot-flow/ui`；长期视情况拆 `@kupola/pivot-flow-ui`。
-- [ ] 文档明确 UI 基于 `@kupola/kupola`，不重复实现基础组件。
+- [x] 增加 `createPivotFlowApp` 或 `createFlowDesigner` 一键入口。
+- [x] 文档提供 10 分钟接入示例。
+- [x] examples 增加 HIS Flow Designer 实例（HIS项目中）。
+- [x] 增加 `@kupola/pivot-flow/css` 默认样式。
+- [x] 增加 headless API 与 UI API 的边界说明。
+- [x] 短期提供 `@kupola/pivot-flow/ui`；长期视情况拆 `@kupola/pivot-flow-ui`。
+- [x] 文档明确 UI 基于 `@kupola/kupola`，不重复实现基础组件。
 
 ## 验收标准
 
-- [ ] 使用者无需自己实现画布、连线、节点检查器、预览面板。
-- [ ] 使用者只需要注册 capability 和 resource schema，就能配置大部分通用流程。
-- [ ] “查询张三的信息”能通过通用 Query Node 完成，而不是写专用 UserQueryNode。
-- [ ] 查询结果 0 条、1 条、多条都有默认 UI 行为。
+- [x] 使用者无需自己实现画布、连线、节点检查器、预览面板。
+- [x] 使用者只需要注册 capability 和 resource schema，就能配置大部分通用流程。
+- [x] “查询张三的信息”能通过通用 Query Node 完成，而不是写专用 UserQueryNode。
+- [x] 查询结果 0 条、1 条、多条都有默认 UI 行为。
 - [x] 节点连线前会校验重复边、自连接、环和非法端口。
 - [x] 设计出来的 Flow 可以保存、预览、执行、发布。
 - [x] 高风险节点必须保留确认、审批、权限和审计边界。
-- [ ] 默认 UI 可用，但业务项目可以替换 renderer。
-- [ ] 默认 UI 使用 Kupola UI 组件实现，不重复造基础 Table/Form/Modal/Drawer。
+- [x] 默认 UI 可用，但业务项目可以替换 renderer。
+- [x] 默认 UI 使用 Kupola UI 组件实现，不重复造基础 Table/Form/Modal/Drawer。
 - [x] 子流程可以作为节点复用，且不会绕过权限、确认、审批和审计。
 - [x] 使用者可以注册自定义节点，但自定义节点最终仍映射到 capability、subflow、condition、transform 或 display。
 
