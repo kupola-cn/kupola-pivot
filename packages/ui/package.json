@@ -28,7 +28,9 @@
     "ai"
   ],
   "peerDependencies": {
-    "@kupola/kupola": "^2.0.0"
+    "@kupola/core": "^3.1.1",
+    "@kupola/platform": "^3.1.0",
+    "@kupola/components": "^3.1.0"
   },
   "license": "MIT",
   "repository": {
